@@ -26,7 +26,7 @@ Then I tried Eric Zou's [WATnow](https://github.com/EricJujianZou/watnow). It do
 | | |
 |---|---|
 | 📅 **One list for everything** | Assignments, quizzes and assessments from all your classes, sorted into Overdue, Today, This week, Next week, Later and Completed. The nearest deadline sits at the top. |
-| 🦅 **One pill per class** | Duplicate MyLearningSpace course shells are merged. You can filter by class, or by source: MyLS, Pearson or Achieve. |
+| 🦅 **One slot per class** | Duplicate MyLearningSpace course shells are merged. You can filter by class, or by source: MyLS, Pearson or Achieve. |
 | 📝 **Quiz list** | Every quiz in a class, including ones with no posted due date. |
 | ✅ **Real vs. manual completion** | What MyLS, Pearson or Achieve shows as done is kept separate from things you tick off yourself. Ticking something off never submits it. |
 | 📊 **Weekly progress** | A gold progress bar for work due Monday to Sunday, for whichever class or source you're looking at. |
