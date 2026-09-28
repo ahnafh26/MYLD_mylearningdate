@@ -1,3 +1,19 @@
+# Platform integrations update — September 28, 2026
+
+- **Top Hat (new):** a Top Hat connection in Settings → Connections, a Top Hat source filter, and optional access to app.tophat.com. It reads dated homework, quizzes and readings on open course pages and detects Submitted, Completed, Graded and 100% complete. Pages it can't read import nothing. Not yet checked on a real account.
+- **Achieve:** completion now also covers Submitted, Submitted late, Graded, a score and 100%. "In progress", "40% complete" and class-wide "students completed" never count. Undated rows are kept. Rows in collapsed and Past Assignments groups that are already on the page are read without expanding anything. When the course name has no year, the nearest sensible year is used, so January deadlines in a Fall course land in the next year.
+- **Pearson:** MyLab rows also complete on Submitted or Completed, and an attempt count alone still doesn't count. Undated rows are kept. Mastering course pages and console.pearson.com course pages are read when they show an assignment table, with links straight to the item when the page has a real link. JavaScript launch buttons are never used as links. Mastering and console layouts are assumed, not yet checked on a real account.
+- **MyLS:** quizzes complete from the student's own graded or scored attempts, and discussions from the student's own posts. If MyLS won't share attempts (403), the course falls back to content completion without a warning. Up to 40 of these checks run per course per sync.
+- **Matching platform items to MyLS:**
+  - Titles are compared after removing platform names, "(online)", "Assignment", trailing due text and punctuation. HW = Homework, and Ch/Ch./Chapter/Chapter 04 are treated as the same.
+  - Chapter, quiz, part, module and week numbers must match exactly. A title that contains the other can match, unless the extra words name a different activity (practice, quiz, lab, reading…).
+  - Due dates may be up to 26 hours apart, and an undated MyLS item can match.
+  - A match must be unique both ways. One MyLS item matching both Pearson and Achieve is no longer merged three ways; it is treated as ambiguous.
+  - The platform now owns the merged item: its title, link, status and source filter. MyLS keeps the item id, so check-offs, reminders and Calendar events carry over, and fills in a missing due date. The card reads "Pearson · also on MyLS".
+  - A MyLS content visit never marks platform work complete.
+  - Every merge decision is listed in Settings → Sync details.
+- **Tests:** reader tests against saved HTML fixtures, cross-platform matching cases and MyLS quiz/discussion completion tests; 65 pass.
+
 # Unreleased integration preview
 
 - Redesigned the side panel: lavender/white cards, gold progress, original local campus artwork, readable wrapping titles, course pills and source filters.

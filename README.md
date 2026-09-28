@@ -6,7 +6,7 @@
 <img src="https://img.shields.io/badge/license-MIT-330072?style=for-the-badge&labelColor=F2A900" alt="MIT license">
 </p>
 
-**[Why I made this](#-why-i-made-this)** · **[Features](#-features)** · **[Install](#-install)** · **[Pearson & Achieve](#-pearson--achieve)** · **[Privacy](#-privacy)** · **[Status](#-status)** · **[Development](#-development)**
+**[Why I made this](#-why-i-made-this)** · **[Features](#-features)** · **[Install](#-install)** · **[Pearson, Achieve & Top Hat](#-pearson-achieve--top-hat)** · **[Privacy](#-privacy)** · **[Status](#-status)** · **[Development](#-development)**
 
 ---
 
@@ -25,9 +25,9 @@ Then I tried Eric Zou's [WATnow](https://github.com/EricJujianZou/watnow). It do
 | | |
 |---|---|
 | 📅 **One list for everything** | Assignments, quizzes and assessments from all your classes, sorted into Overdue, Today, This week, Next week, Later and Completed. The nearest deadline sits at the top. |
-| 🦅 **One slot per class** | Duplicate MyLearningSpace course shells are merged. You can filter by class, or by source: MyLS, Pearson or Achieve. |
+| 🦅 **One slot per class** | Duplicate MyLearningSpace course shells are merged. You can filter by class, or by source: MyLS, Pearson, Achieve or Top Hat. |
 | 📝 **Quiz list** | Every quiz in a class, including ones with no posted due date. |
-| ✅ **Real vs. manual completion** | What MyLS, Pearson or Achieve shows as done is kept separate from things you tick off yourself. Ticking something off never submits it. |
+| ✅ **Real vs. manual completion** | What MyLS, Pearson, Achieve or Top Hat shows as done is kept separate from things you tick off yourself. Ticking something off never submits it. |
 | 📊 **Weekly progress** | A gold progress bar for work due Monday to Sunday, for whichever class or source you're looking at. |
 | 🔔 **Reminders & moved dates** | MYLD rereads MyLearningSpace every 30 minutes while Chrome is open, flags due dates that changed, and can remind you about each kind of deadline. |
 | 🎨 **Laurier look** | Purple, white and gold, with light, dark and system appearance, keyboard controls and reduced motion. |
@@ -52,16 +52,22 @@ Replace the files **in the same folder**, then click **Reload** on the MYLD card
 
 ---
 
-## 🔗 Pearson & Achieve
+## 🔗 Pearson, Achieve & Top Hat
 
-Sync MyLearningSpace first, then go to **Settings → Connections** and connect the platform. MYLD reads the assignment pages you have open. It doesn't open courses on its own, and it never launches or submits anything.
+Sync MyLearningSpace first, then go to **Settings → Connections** and connect the platform. MYLD reads the assignment pages you have open. It doesn't open courses on its own, doesn't expand or click anything, and never launches or submits anything.
 
 | Platform | Open this page |
 |---|---|
 | **Pearson MyLab** | Your course → Lab Quizzes and Assignments |
-| **Achieve** | My Course → Assignments (expand groups or use View All to show more) |
+| **Pearson Mastering** | Your course's assignment list *(new, not yet checked on a real account)* |
+| **Achieve** | My Course → Assignments (use View All to load more; collapsed and Past Assignments groups already on the page are read too) |
+| **Top Hat** | Your course's assigned content list *(new, not yet checked on a real account)* |
 
-When the same assignment shows up on more than one platform (same class, same title, due within 24 hours), it appears once. If any platform shows it as complete, it counts as complete. Only work that's loaded and has a date is picked up, so the platform is still the final word on deadlines.
+**Completion** comes from the platform itself: Complete, Submitted (including late), Graded, a score, or 100%. An attempt count, "40% complete" progress, or a class-wide "students completed" number never counts. Top Hat items without a due date are left out; Pearson and Achieve items without one show under **No date listed**.
+
+**When a platform item is also posted on MyLS** (same class, matching title, due within about a day), it shows once, under the platform where you actually do the work, with that platform's status and link, and a note that it's also on MyLS. Titles are matched after removing platform names and noise, so "Achieve – Ch. 4 HW" matches "Chapter 4 Homework". Chapter, quiz, part and week numbers must match exactly, and if a match could go more than one way, nothing is merged. Settings → Sync details lists every merge decision.
+
+Only loaded work is picked up, so the platform is still the final word on deadlines.
 
 <details>
 <summary><b>Google Calendar (coming soon)</b></summary>
@@ -85,7 +91,7 @@ Everything stays in Chrome on your own computer. There's **no MYLD server, no an
 | mylearningspace.wlu.ca | Reading your courses and deadlines through your signed-in tab (read-only) |
 | notifications (optional) | Deadline reminders, only if you turn them on |
 | identity | Signing in to Google for Calendar |
-| scripting and Pearson/Achieve sites (optional) | Reading assignment lists on pages you've connected |
+| scripting and Pearson/Achieve/Top Hat sites (optional) | Reading assignment lists on pages you've connected |
 | googleapis.com (optional) | Adding deadlines to Google Calendar |
 
 **Clear local data** in Settings removes everything MYLD has saved. It doesn't delete events you already added to Google Calendar.
@@ -101,8 +107,12 @@ MYLD is in **beta**.
 | Part | Where it's at |
 |---|---|
 | MyLearningSpace sync | 🟢 Works on a real account. Some completion updates still need more live testing. |
-| Pearson MyLab | 🟡 Tested on a real course page. Other course layouts may not be supported yet. |
-| Achieve | 🟡 Tested on a real course page. Other courses still need checking. |
+| MyLS quiz and discussion completion | ⚪ New (quiz attempts and your own discussion posts). Automated tests only; MyLS may not share attempts with students. |
+| Pearson MyLab | 🟡 The assignment table was read on a real course page. The new completion states are covered by automated tests only. |
+| Pearson Mastering and console | ⚪ New. Automated tests against assumed page layouts only; not yet checked on a real account. |
+| Achieve | 🟡 Read on a real course page. The new completion states, undated rows and collapsed groups are covered by automated tests only. |
+| Top Hat | ⚪ New. Automated tests against an assumed page layout only; not yet checked on a real account. |
+| Matching platform items to MyLS | 🟡 Automated tests only; needs checking with real course titles. |
 | Google Calendar | ⚪ Built, but not set up or tested live yet. |
 
 Details are in [docs/TEST-RESULTS.md](docs/TEST-RESULTS.md) and [docs/CHANGELOG.md](docs/CHANGELOG.md).
@@ -122,7 +132,7 @@ extension/
 ├── background.js        MyLearningSpace sync, reminders, badge, notifications
 ├── planner.js           term detection, date groups, reminder timing
 ├── session-bridge.js    read-only requests through your signed-in tab
-├── integrations/        Pearson & Achieve readers, cross-platform matching, Google Calendar
+├── integrations/        Pearson, Achieve & Top Hat readers, cross-platform matching, Google Calendar
 └── popup/               the side panel
 tests/                   automated tests
 docs/                    changelog, test results, Calendar setup
