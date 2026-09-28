@@ -1,5 +1,5 @@
 import { DEFAULT_PREFS, ORIGIN, safeLink, effectiveAssignments, courseLabel } from '../background.js';
-import { PROVIDERS, providerOf, assignmentLink, combinedData } from '../integrations/model.js';
+import { PROVIDERS, EXTERNAL_PROVIDERS, providerOf, assignmentLink, combinedData } from '../integrations/model.js';
 import { calendarConfigured } from '../integrations/google-calendar.js';
 import { weeklyProgress, knownProgress, scopedItems, inView } from './dashboard.js';
 import { REMINDER_TYPES, DEFAULT_LEADS, LEADS, bucketOf, categoryOf } from '../planner.js';
@@ -16,7 +16,8 @@ function render() {
   const focusKey=document.activeElement?.dataset?.focusKey;
   document.documentElement.dataset.theme = prefs().theme === 'system' ? systemTheme.matches ? 'dark' : 'light' : prefs().theme;
   const courses = (combinedData(data).courses).map(c => ({ ...c, code: courseLabel(c.name, c.code) })).sort((a,b) => a.code.localeCompare(b.code, undefined, { numeric: true }) || a.id.localeCompare(b.id));
-  const assignments = effectiveAssignments(data).filter(item => item.type === 'Quiz' || Number.isFinite(Date.parse(item.dueDate))).map(item => ({ ...item, courseCode: courses.find(c => c.id === item.courseId)?.code || item.courseCode })).sort((a,b) => (Date.parse(a.dueDate) || Infinity) - (Date.parse(b.dueDate) || Infinity));
+  // Platform items can be undated (they show under "No date listed"); MyLS keeps only quizzes undated.
+  const assignments = effectiveAssignments(data).filter(item => item.type === 'Quiz' || providerOf(item) !== 'd2l' || Number.isFinite(Date.parse(item.dueDate))).map(item => ({ ...item, courseCode: courses.find(c => c.id === item.courseId)?.code || item.courseCode })).sort((a,b) => (Date.parse(a.dueDate) || Infinity) - (Date.parse(b.dueDate) || Infinity));
   const pending = assignments.filter(item => ['Pending', 'Overdue'].includes(item.status));
   const upcoming = pending.filter(item => Date.parse(item.dueDate) >= Date.now());
   const overdue = pending.filter(item => item.status === 'Overdue');
@@ -88,7 +89,7 @@ function card(item) {
   const tag=node('span','course-tag'); tag.append(node('span','course-dot'),node('span','',item.courseCode));
   const color=combinedData(data).courses.find(c=>c.id===item.courseId)?.color;
   if(/^#[0-9a-f]{6}$/i.test(color)) tag.style.setProperty('--course-color',color);
-  const source=node('span',`source-badge ${providerOf(item)}`,(item.providers || [providerOf(item)]).map(id=>PROVIDERS[id].label).join(' + '));
+  const source=node('span',`source-badge ${providerOf(item)}`,`${provider.label}${item.alsoOn?.includes('d2l')?' · also on MyLS':''}`);
   top.append(tag,source);
   const meta=node('div',`card-meta ${item.status.toLowerCase()} ${item.changedFrom?'changed':''}`);
   const hasDate=Number.isFinite(Date.parse(item.dueDate));
@@ -127,7 +128,7 @@ function renderSettings() {
     const label=node('label','',courseLabel(course.name,course.code));const input=node('input');input.type='checkbox';input.checked=!prefs().mutedCourses.includes(course.id);input.setAttribute('aria-label',`Reminders for ${courseLabel(course.name,course.code)}`);input.addEventListener('change',()=>savePreference('mutedCourses',input.checked?prefs().mutedCourses.filter(id=>id!==course.id):[...new Set([...prefs().mutedCourses,course.id])]));label.append(input);$('reminder-courses').append(label);
   }
   renderConnections();
-  $('diagnostics').textContent=[data.syncState?.error,...(data.syncState?.warnings||[]),...Object.entries(data.external||{}).map(([p,v])=>`${PROVIDERS[p]?.label || p}: ${v.state} · ${v.message || ''}`),...(data.diagnostics?.requests||[]).map(r=>`${r.status||'NETWORK'} · ${r.via} · ${r.endpoint}`)].filter(Boolean).join('\n')||'No requests yet.';
+  $('diagnostics').textContent=[data.syncState?.error,...(data.syncState?.warnings||[]),...Object.entries(data.external||{}).map(([p,v])=>`${PROVIDERS[p]?.label || p}: ${v.state} · ${v.message || ''}`),...combinedData(data).mergeLog.slice(0,60),...(data.diagnostics?.requests||[]).map(r=>`${r.status||'NETWORK'} · ${r.via} · ${r.endpoint}`)].filter(Boolean).join('\n')||'No requests yet.';
 }
 function savePreference(key,value) {
   preferenceWrite=preferenceWrite.catch(()=>{}).then(async()=>{const {preferences={}}=await chrome.storage.local.get('preferences');await chrome.storage.local.set({preferences:{...DEFAULT_PREFS,...preferences,[key]:value}});}).catch(()=>{localError='Could not save your setting.';render();});return preferenceWrite;
@@ -146,18 +147,18 @@ systemTheme.addEventListener('change',render);
 async function initialize(){data=await chrome.storage.local.get(null);render();const status=await chrome.runtime.sendMessage({type:'STATUS'});syncing=Boolean(status?.running);render();if(!syncing&&!data.deletedAt&&(!data.lastSync||Date.now()-Date.parse(data.lastSync)>prefs().syncMinutes*60000))await refresh();}
 initialize().catch(()=>{localError='Close and reopen MYLD to try again.';render();});setInterval(render,60000);
 
-function sourceSymbol(provider) { return {all:'◇',d2l:'▱',pearson:'Ⓟ',achieve:'▥'}[provider]; }
+function sourceSymbol(provider) { return {all:'◇',d2l:'▱',pearson:'Ⓟ',achieve:'▥',tophat:'Ⓣ'}[provider]; }
 function calendarReady() { return data.calendarConnection?.state === 'connected' && data.calendarConnection.ownerId === data.accountId; }
 function renderSources() {
   $('source-filters').replaceChildren();
-  for(const [id,label] of [['all','All Sources'],...Object.entries(PROVIDERS).map(([id,p])=>[id,p.label])]) {
+  for(const [id,label] of [['all','All'],...Object.entries(PROVIDERS).map(([id,p])=>[id,p.label])]) {
     const button=node('button',`source-filter ${id}`);button.type='button';button.setAttribute('aria-pressed',String(sourceFilter===id));
     button.dataset.focusKey=`source:${id}`;
     const icon=node('span','source-symbol',sourceSymbol(id));icon.setAttribute('aria-hidden','true');button.append(icon,node('span','',label));
     button.addEventListener('click',()=>{sourceFilter=id;render();});$('source-filters').append(button);
   }
   const source=data.external?.[sourceFilter];
-  const note=['pearson','achieve'].includes(sourceFilter) ? source?.ownerId === data.accountId ? source.message || 'Only loaded course pages are included.' : `Connect ${PROVIDERS[sourceFilter].label} in Settings to read its open assignment pages.` : '';
+  const note=EXTERNAL_PROVIDERS.includes(sourceFilter) ? source?.ownerId === data.accountId ? source.message || 'Only loaded course pages are included.' : `Connect ${PROVIDERS[sourceFilter].label} in Settings to read its open assignment pages.` : '';
   $('source-note').hidden=!note;$('source-note').textContent=note;
 }
 async function runIntegration(message) {
@@ -179,7 +180,7 @@ async function connectProvider(provider) {
 }
 function renderConnections() {
   $('connections').replaceChildren();
-  for(const provider of ['pearson','achieve']) {
+  for(const provider of EXTERNAL_PROVIDERS) {
     const saved=data.external?.[provider], current=saved?.ownerId===data.accountId;
     const row=node('div','connection');row.append(node('strong','',PROVIDERS[provider].label));
     row.append(node('p','help',current ? `${saved.state==='connected'?'Connected · partial coverage':saved.state.replaceAll('-',' ')}. ${saved.message||''}` : 'Open a signed-in course assignment page, then connect.'));

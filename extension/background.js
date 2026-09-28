@@ -1,4 +1,4 @@
-import { combinedData, keepVerified, assignmentLink, providerOf } from './integrations/model.js';
+import { combinedData, keepVerified, assignmentLink, providerOf, EXTERNAL_PROVIDERS } from './integrations/model.js';
 import { syncProvider } from './integrations/providers.js';
 import { connectCalendar, disconnectCalendar, addCalendarItems } from './integrations/google-calendar.js';
 import { DEFAULT_LEADS, categoryOf, reminderTime, termWindow, currentEnrollment, scheduledItem, reconcileItems } from './planner.js';
@@ -197,7 +197,7 @@ export function normalizeTool(row, type, course) {
   const query = new URLSearchParams({ ou: course.id });
   if (type === 'Quiz') query.set('qi', entityId); else query.set('tid', entityId);
   const path = type === 'Quiz' ? '/d2l/lms/quizzing/user/quiz_summary.d2l' : '/d2l/le/discussions/List';
-  return { id: `${type.toLowerCase()}_${course.id}_${entityId}`, entityId: String(entityId), courseId: course.id, courseCode: course.code, title: row.Name || type,
+  return { id: `${type.toLowerCase()}_${course.id}_${entityId}`, entityId: String(entityId), ...(type === 'Discussion' && row.ForumId != null ? { forumId: String(row.ForumId) } : {}), courseId: course.id, courseCode: course.code, title: row.Name || type,
     source: type.toLowerCase(), seenIn: [type.toLowerCase()], opensAt: row.StartDate || row.UnlockStartDate || null, type, dueDate, dateKind: row.DueDate ? 'Due' : 'Closes', status: 'Pending', statusSource: 'unverified', link: `${ORIGIN}${path}?${query}` };
 }
 
@@ -211,7 +211,7 @@ function mergeTool(items, item) {
   return [...items.filter(other => !(other.type === item.type && other.entityId === item.entityId)), item];
 }
 
-async function courseData(course, version, old, calendarRows) {
+async function courseData(course, version, old, calendarRows, accountId) {
   const base = `/d2l/api/le/${version}/${encodeURIComponent(course.id)}`;
   const warnings = [];
   let items = [], folders = [], calendarOK = false, foldersOK = false;
@@ -260,7 +260,7 @@ async function courseData(course, version, old, calendarRows) {
       title: folder.Name || linked[0]?.title || 'Assignment', type: 'Dropbox', dueDate,
       source: 'dropbox', seenIn: ['dropbox'], categoryName: categories.find(category => category.Id === folder.CategoryId)?.Name, opensAt: folder.Availability?.StartDate || null,
       description: plain(folder.CustomInstructions), link: folder.GroupTypeId != null ? groupId ? `${folderLink(course.id, id)}&grpid=${encodeURIComponent(groupId)}` : `${ORIGIN}/d2l/lms/dropbox/user/folders_list.d2l?ou=${encodeURIComponent(course.id)}` : linked[0]?.link || folderLink(course.id, id),
-      status: submitted ? 'Submitted' : 'Pending', statusSource: verified || (restricted && submitted) ? 'MyLS' : restricted ? 'restricted' : 'unverified',
+      status: submitted ? 'Submitted' : 'Pending', statusSource: verified || (restricted && submitted) ? 'MyLS' : restricted ? 'restricted' : 'unverified', ...(submitted ? { completionEvidence: 'submission' } : {}),
       dateKind: folder.DueDate || linked.some(item => item.dateKind === 'Due') ? 'Due' : 'Closes', stale: !verified && !restricted
     };
     if (restricted && submitted) item.verificationCached = true;
@@ -274,7 +274,7 @@ async function courseData(course, version, old, calendarRows) {
       else {
         rows = [];
         const forums = await listPages(`${base}/discussions/forums/`);
-        for (const forum of forums.filter(f => !f.IsHidden && f.ForumId != null)) rows.push(...await listPages(`${base}/discussions/forums/${encodeURIComponent(forum.ForumId)}/topics/`));
+        for (const forum of forums.filter(f => !f.IsHidden && f.ForumId != null)) rows.push(...(await listPages(`${base}/discussions/forums/${encodeURIComponent(forum.ForumId)}/topics/`)).map(topic => ({ ...topic, ForumId: topic.ForumId ?? forum.ForumId })));
       }
       for (const row of rows) items = mergeTool(items, normalizeTool(row, type, course));
     } catch (error) {
@@ -285,7 +285,41 @@ async function courseData(course, version, old, calendarRows) {
       }
     }
   }
+  await verifyToolCompletion(items, base, accountId);
   return { items, warnings, complete: calendarOK && foldersOK && !warnings.length };
+}
+
+// Quizzes and discussions have no "my submission" route, so completion comes from the
+// student's own quiz attempts and discussion posts. MyLS may not expose these to students
+// (403/404); then the course's items keep relying on content completion, without a warning.
+export function attemptCompleted(attempts) {
+  return (Array.isArray(attempts) ? attempts : []).some(attempt => Boolean(attempt && (attempt.TimeCompleted || attempt.DateCompleted || attempt.CompletedDate || attempt.SubmittedDate || attempt.IsGraded === true || (attempt.Score != null && attempt.Score !== ''))));
+}
+export function postedBy(posts, accountId) {
+  return (Array.isArray(posts) ? posts : []).some(post => accountId != null && String(post?.PostingUserId) === String(accountId) && !post.IsDeleted);
+}
+async function toolCompleted(item, base, accountId) {
+  if (item.type === 'Quiz') return attemptCompleted(await listPages(`${base}/quizzes/${encodeURIComponent(item.entityId)}/attempts/`)) && 'attempt';
+  if (item.type === 'Discussion' && item.forumId) return postedBy(await listPages(`${base}/discussions/forums/${encodeURIComponent(item.forumId)}/topics/${encodeURIComponent(item.entityId)}/posts/`), accountId) && 'post';
+  return false;
+}
+async function verifyToolCompletion(items, base, accountId) {
+  const blocked = new Set(), now = Date.now();
+  let budget = 40;
+  for (const item of items) {
+    if (item.status === 'Submitted' || !item.entityId || !['Quiz', 'Discussion'].includes(item.type) || blocked.has(item.type) || budget <= 0) continue;
+    if (item.type === 'Discussion' && (!item.forumId || accountId == null)) continue;
+    const due = Date.parse(item.dueDate);
+    if (Number.isFinite(due) && (due < now - 30 * 86400000 || due > now + 60 * 86400000)) continue;
+    budget--;
+    try {
+      const evidence = await toolCompleted(item, base, accountId);
+      if (evidence) Object.assign(item, { status: 'Submitted', statusSource: 'MyLS', completionKind: evidence === 'post' ? 'Posted' : 'Completed', completionEvidence: evidence, stale: false });
+    } catch (error) {
+      if (['auth', 'rate'].includes(error.code)) throw error;
+      if (['permission', '404'].includes(error.code)) blocked.add(item.type);
+    }
+  }
 }
 
 async function performD2LSync() {
@@ -314,7 +348,7 @@ async function performD2LSync() {
     let assignments = []; const warnings = [...shared.warnings];
     let complete = !warnings.length;
     for (const course of courses) {
-      const result = await courseData(course, version.le, (old.assignments || []).filter(item => item.courseId === course.id), shared.calendars.get(course.id));
+      const result = await courseData(course, version.le, (old.assignments || []).filter(item => item.courseId === course.id), shared.calendars.get(course.id), accountId);
       assignments.push(...result.items); warnings.push(...result.warnings); complete &&= result.complete;
     }
     assignments = reconcileItems([...assignments, ...shared.items]);
@@ -432,16 +466,22 @@ async function shouldNotify(item, data) {
     const user = await request(`/d2l/api/lp/${version.lp}/users/whoami`);
     if (String(user.Identifier) !== data.accountId) return false;
     let completed = false;
+    const base = `/d2l/api/le/${version.le}/${encodeURIComponent(item.sourceCourseId || item.courseId)}`;
     if (item.type === 'Dropbox' && item.entityId) {
-      completed = hasSubmission(await request(`/d2l/api/le/${version.le}/${encodeURIComponent(item.sourceCourseId || item.courseId)}/dropbox/folders/${encodeURIComponent(item.entityId)}/submissions/mysubmissions/`));
-    } else if (item.contentId) {
-      const query = new URLSearchParams({ orgUnitIdsCSV: item.sourceCourseId || item.courseId });
-      const rows = await listPages(`/d2l/api/le/${version.le}/content/myItems/completions/?${query}`);
-      completed = rows.some(row => String(row.ItemId) === item.contentId && Boolean(row.DateCompleted));
+      completed = hasSubmission(await request(`${base}/dropbox/folders/${encodeURIComponent(item.entityId)}/submissions/mysubmissions/`)) && 'submission';
+    } else {
+      if (['Quiz', 'Discussion'].includes(item.type) && item.entityId) {
+        try { completed = await toolCompleted(item, base, data.accountId); } catch (error) { if (['auth', 'rate'].includes(error.code)) throw error; }
+      }
+      if (!completed && item.contentId) {
+        const query = new URLSearchParams({ orgUnitIdsCSV: item.sourceCourseId || item.courseId });
+        const rows = await listPages(`/d2l/api/le/${version.le}/content/myItems/completions/?${query}`);
+        completed = rows.some(row => String(row.ItemId) === item.contentId && Boolean(row.DateCompleted)) && 'content';
+      }
     }
     if (completed) {
       const fresh = await chrome.storage.local.get(['accountId', 'assignments']);
-      if (fresh.accountId === data.accountId && !inFlight) await chrome.storage.local.set({ assignments: fresh.assignments.map(row => row.id === item.id ? { ...row, status: 'Submitted', statusSource: 'MyLS', completionKind: item.type === 'Dropbox' ? 'Submitted' : 'Completed' } : row) });
+      if (fresh.accountId === data.accountId && !inFlight) await chrome.storage.local.set({ assignments: fresh.assignments.map(row => row.id === item.id ? { ...row, status: 'Submitted', statusSource: 'MyLS', completionKind: item.type === 'Dropbox' ? 'Submitted' : completed === 'post' ? 'Posted' : 'Completed', completionEvidence: completed } : row) });
       return false;
     }
     return true;
@@ -542,13 +582,13 @@ export function applyCompletionEvidence(items, rows) {
         return id && id === item.entityId;
       } catch { return false; }
     });
-    return evidence ? { ...item, status: 'Submitted', statusSource: 'MyLS', completedAt: evidence.DateCompleted, completionKind: 'Completed' } : item;
+    return evidence ? { ...item, status: 'Submitted', statusSource: 'MyLS', completedAt: evidence.DateCompleted, completionKind: 'Completed', completionEvidence: item.completionEvidence || 'content' } : item;
   });
 }
 async function performSync() {
   const result = await performD2LSync();
   const data = await chrome.storage.local.get(null);
-  for (const provider of ['pearson', 'achieve']) {
+  for (const provider of EXTERNAL_PROVIDERS) {
     if (data.external?.[provider]?.ownerId === data.accountId) {
       try { await syncProvider(provider, courseLabel); } catch (error) { console.warn('Provider sync unavailable:', provider); }
     }

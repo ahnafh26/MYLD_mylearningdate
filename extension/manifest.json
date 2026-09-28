@@ -57,6 +57,7 @@
     "https://mylabmastering.pearson.com/*",
     "https://mylab.pearson.com/*",
     "https://achieve.macmillanlearning.com/*",
+    "https://app.tophat.com/*",
     "https://www.googleapis.com/*"
   ],
   "version_name": "3.1.0 integration preview"

@@ -23,3 +23,26 @@ test('real account mismatch stays quarantined when course tabs are closed',async
  globalThis.chrome={storage:{local:{get:async()=>structuredClone(state),set:async patch=>Object.assign(state,patch)}},permissions:{contains:async()=>true},tabs:{query:async()=>[]}};
  await syncProvider('pearson',courseLabel);assert.equal(combinedData(state).assignments.length,0);
 });
+test('Top Hat syncs end to end, keeping undated rows for other platforms and each row\'s completion kind',async()=>{
+ let state={accountId:'owner'};
+ const rows={tophat:[{externalId:'th-1',title:'Chapter 4 Homework',dueDate:'2026-10-01T03:59:00Z',completed:true,completionKind:'Submitted',type:'Dropbox',link:'https://app.tophat.com/e/1'}],
+  achieve:[{externalId:'a4',title:'Syllabus Scavenger Hunt',dueDate:null,completed:false,type:'Dropbox',link:'https://achieve.macmillanlearning.com/courses/c/mycourse#a4'}]};
+ for(const provider of ['tophat','achieve']){
+  globalThis.chrome={storage:{local:{get:async()=>structuredClone(state),set:async patch=>Object.assign(state,patch)}},permissions:{contains:async()=>true},tabs:{query:async()=>[{id:1}]},scripting:{executeScript:async()=>[{result:{state:'connected',account:'Sam',courseId:'1',courseName:'BU 111 Fall 2026',rows:rows[provider]}}]}};
+  assert.equal((await syncProvider(provider,courseLabel)).ok,true,provider);
+ }
+ const [homework]=state.external.tophat.assignments;
+ assert.equal(homework.status,'Submitted');assert.equal(homework.completionKind,'Submitted');assert.equal(homework.statusSource,'Top Hat');
+ const [undated]=state.external.achieve.assignments;
+ assert.equal(undated.dueDate,null);assert.equal(combinedData(state).assignments.length,2);
+});
+test('a Mastering page table is used only when the tab has no MyLab assignment frame',async()=>{
+ const context={state:'context',account:'Sam',courseId:'7',courseName:'BU 111',masteringRows:[{externalId:'m-1',title:'Week 3 Problem Set',dueDate:'2026-10-02T03:59:00Z',completed:true,link:'https://mylabmastering.pearson.com/x'}]};
+ const frame={state:'rows',courseId:'7',rows:[{externalId:'H_1',title:'Week 3 Problem Set',dueDate:'2026-10-02T03:59:00Z',completed:true,link:'https://mylab.pearson.com/courses/7/assignments'}]};
+ for(const [results,expected] of [[[context],['m-1']],[[context,frame],['H_1']]]){
+  let state={accountId:'owner'};
+  globalThis.chrome={storage:{local:{get:async()=>structuredClone(state),set:async patch=>Object.assign(state,patch)}},permissions:{contains:async()=>true},tabs:{query:async()=>[{id:1}]},scripting:{executeScript:async()=>results.map(result=>({result:structuredClone(result)}))}};
+  await syncProvider('pearson',courseLabel);
+  assert.deepEqual(state.external.pearson.assignments.map(item=>item.externalId),expected);
+ }
+});

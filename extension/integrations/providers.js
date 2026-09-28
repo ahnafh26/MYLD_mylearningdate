@@ -1,8 +1,8 @@
-import { PROVIDERS, digest, keepVerified } from './model.js';
+import { PROVIDERS, EXTERNAL_PROVIDERS, digest, keepVerified } from './model.js';
 import { readProviderPage } from './page-reader.js';
 
 export async function syncProvider(provider, labelCourse) {
-  if (!['pearson', 'achieve'].includes(provider)) throw new Error('Unknown provider.');
+  if (!EXTERNAL_PROVIDERS.includes(provider)) throw new Error('Unknown provider.');
   const data = await chrome.storage.local.get(['accountId', 'external']);
   if (!data.accountId) throw new Error('Sync MyLS first to associate this connection with your account.');
   const ownerId = data.accountId;
@@ -21,9 +21,12 @@ export async function syncProvider(provider, labelCourse) {
       try {
         const results = await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: provider === 'pearson' }, func: readProviderPage, args: [provider] });
         const context = results.find(row => row.result?.state === 'context')?.result;
+        const frameRows = results.some(row => row.result?.state === 'rows' && row.result.courseId === context?.courseId && row.result.rows?.length);
         for (const { result } of results) {
           if (result?.account) observedAccounts.add(await digest(`${provider}|${result.account}`));
-          if (result?.state === 'rows' && context?.courseId === result.courseId) Object.assign(result, context, { state: result.rows?.length ? 'connected' : 'unavailable' });
+          if (result?.state === 'rows' && context?.courseId === result.courseId) Object.assign(result, { ...context, masteringRows: undefined }, { state: result.rows?.length ? 'connected' : 'unavailable', message: result.message });
+          // A Mastering course page's own table is used only when no MyLab frame was read.
+          if (result === context && result.masteringRows?.length && !frameRows) snapshots.push({ ...result, state: 'connected', rows: result.masteringRows });
           if (result?.state === 'connected' && result.account && Array.isArray(result.rows)) snapshots.push(result);
           else if (result?.message) reason = result;
         }
@@ -45,14 +48,17 @@ export async function syncProvider(provider, labelCourse) {
       const assignments = new Map(oldItems.map(item => [item.id, { ...item, stale: true }]));
       for (const snapshot of snapshots) {
         const courseId = `${provider}:${accountKey.slice(0, 16)}:${snapshot.courseId}`;
-        const course = { id: courseId, externalId: snapshot.courseId, provider, name: snapshot.courseName, code: labelCourse(snapshot.courseName), color: provider === 'achieve' ? '#83b963' : '#e58baa' };
+        const course = { id: courseId, externalId: snapshot.courseId, provider, name: snapshot.courseName, code: labelCourse(snapshot.courseName), color: { achieve: '#83b963', pearson: '#e58baa', tophat: '#f2a900' }[provider] };
         courses.set(courseId, course);
         for (const row of snapshot.rows) {
-          if (!row.externalId || !row.title || !Number.isFinite(Date.parse(row.dueDate))) continue;
+          if (!row.externalId || !row.title) continue;
+          // Undated rows are kept; they show under "No date listed" and never trigger reminders.
+          const dated = Number.isFinite(Date.parse(row.dueDate));
           const id = `${courseId}:${row.externalId}`, before = assignments.get(id);
-          const item = { id, externalId: row.externalId, provider, source: provider, courseId, courseCode: course.code, title: row.title.slice(0, 1000), type: /quiz|test|exam/i.test(row.title) ? 'Quiz' : 'Dropbox', dueDate: row.dueDate, dateKind: 'Due', link: row.link,
-            status: row.completed ? 'Submitted' : 'Pending', completionKind: 'Completed', statusSource: row.completed ? PROVIDERS[provider].label : 'unverified', lastSynced: new Date().toISOString(), stale: false };
-          if (before && before.dueDate !== item.dueDate) { item.changedFrom = before.dueDate; item.changedAt = new Date().toISOString(); }
+          const item = { id, externalId: row.externalId, provider, source: provider, courseId, courseCode: course.code, title: row.title.slice(0, 1000), type: ['Quiz', 'Dropbox'].includes(row.type) ? row.type : /quiz|test|exam/i.test(row.title) ? 'Quiz' : 'Dropbox',
+            dueDate: dated ? new Date(row.dueDate).toISOString() : null, dateKind: dated ? 'Due' : null, link: row.link,
+            status: row.completed ? 'Submitted' : 'Pending', completionKind: row.completionKind || 'Completed', statusSource: row.completed ? PROVIDERS[provider].label : 'unverified', lastSynced: new Date().toISOString(), stale: false };
+          if (before && dated && Number.isFinite(Date.parse(before.dueDate)) && before.dueDate !== item.dueDate) { item.changedFrom = before.dueDate; item.changedAt = new Date().toISOString(); }
           assignments.set(id, item);
         }
       }

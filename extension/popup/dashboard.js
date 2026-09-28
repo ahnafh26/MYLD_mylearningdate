@@ -27,6 +27,8 @@ export function inView(item, view, now = new Date()) {
   if (view === 'today') { const day = new Date(now); day.setHours(0,0,0,0); const next = new Date(day); next.setDate(next.getDate()+1); return due >= +day && due < +next; }
   return true;
 }
+// A merged item belongs to the platform where the work is done, so it shows once, under
+// that platform's source filter (its card notes that it's also on MyLS).
 export function scopedItems(items, course, source) {
-  return items.filter(item => (course === 'all' || item.courseId === course) && (source === 'all' || (item.providers || [providerOf(item)]).includes(source)));
+  return items.filter(item => (course === 'all' || item.courseId === course) && (source === 'all' || providerOf(item) === source));
 }
