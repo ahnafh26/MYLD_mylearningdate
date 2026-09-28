@@ -241,7 +241,7 @@ async function courseData(course, version, old, calendarRows) {
     const linked = items.filter(item => item.type === 'Dropbox' && item.entityId === id);
     const dueDate = linked.find(item => item.dateKind === 'Due')?.dueDate || iso(folder.DueDate || folder.Availability?.EndDate) || linked[0]?.dueDate;
     if (!dueDate) continue;
-    let submitted = false, verified = false, groupId = null;
+    let submitted = false, verified = false, restricted = false, groupId = null;
     try {
       const submissions = await request(`${base}/dropbox/folders/${encodeURIComponent(id)}/submissions/mysubmissions/`);
       submitted = hasSubmission(submissions); verified = true;
@@ -249,7 +249,9 @@ async function courseData(course, version, old, calendarRows) {
     }
     catch (error) {
       if (error.code === 'auth' || error.code === 'rate') throw error;
-      warnings.push(`${course.code}: a submission status could not be verified.`);
+      // 403: MyLS doesn't share submissions for this folder (e.g. info-only program shells), which isn't a sync failure.
+      restricted = error.code === 'permission';
+      if (!restricted) warnings.push(`${course.code}: a submission status could not be verified.`);
       submitted = old.some(item => item.entityId === id && item.type === 'Dropbox' && item.status === 'Submitted');
     }
     items = items.filter(item => !(item.type === 'Dropbox' && item.entityId === id));
@@ -258,9 +260,10 @@ async function courseData(course, version, old, calendarRows) {
       title: folder.Name || linked[0]?.title || 'Assignment', type: 'Dropbox', dueDate,
       source: 'dropbox', seenIn: ['dropbox'], categoryName: categories.find(category => category.Id === folder.CategoryId)?.Name, opensAt: folder.Availability?.StartDate || null,
       description: plain(folder.CustomInstructions), link: folder.GroupTypeId != null ? groupId ? `${folderLink(course.id, id)}&grpid=${encodeURIComponent(groupId)}` : `${ORIGIN}/d2l/lms/dropbox/user/folders_list.d2l?ou=${encodeURIComponent(course.id)}` : linked[0]?.link || folderLink(course.id, id),
-      status: submitted ? 'Submitted' : 'Pending', statusSource: verified ? 'MyLS' : 'unverified',
-      dateKind: folder.DueDate || linked.some(item => item.dateKind === 'Due') ? 'Due' : 'Closes', stale: !verified
+      status: submitted ? 'Submitted' : 'Pending', statusSource: verified || (restricted && submitted) ? 'MyLS' : restricted ? 'restricted' : 'unverified',
+      dateKind: folder.DueDate || linked.some(item => item.dateKind === 'Due') ? 'Due' : 'Closes', stale: !verified && !restricted
     };
+    if (restricted && submitted) item.verificationCached = true;
     item.status = statusOf(item);
     items.push(item);
   }

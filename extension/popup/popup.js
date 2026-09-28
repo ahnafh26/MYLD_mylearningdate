@@ -98,6 +98,7 @@ function card(item) {
   if(item.opensAt && Date.parse(item.opensAt)>Date.now())link.append(node('p','verification',`Opens ${shortDate(item.opensAt)}`));
   if(verified) link.append(node('p','verification verified-note',`${item.verificationCached ? 'Previously verified' : 'Verified'} by ${completionSource}`));
   else if(item.manualDone) link.append(node('p','verification','Checked off manually · not a submission'));
+  else if(item.statusSource==='restricted') link.append(node('p','verification','MyLS doesn’t share this submission status · check MyLS'));
   if(item.stale)link.append(node('p','verification',`Saved date · check ${provider.label}`));
   wrapper.append(done,link);
   if(calendarReady() && hasDate) {

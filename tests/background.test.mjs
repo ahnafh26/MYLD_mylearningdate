@@ -120,3 +120,28 @@ test('tab bridge accepts only own-extension read routes and uses same-origin GET
   const result=await new Promise(resolve=>assert.equal(listener({type:'MYLD_READ',path:'/d2l/api/lp/1.43/users/whoami'},{id:'myld'},resolve),true));
   assert.equal(result.status,200);assert.equal(requests.length,1);assert.equal(requests[0].options.method,'GET');assert.equal(requests[0].options.credentials,'same-origin');
 });
+test('a 403 on one submission lookup is noted on the item, not raised as a sync warning', async () => {
+  const state={accountId:'99',assignments:[]};
+  globalThis.chrome={storage:{local:{get:async()=>structuredClone(state),set:async value=>Object.assign(state,value)}},action:{setBadgeText:async()=>{},setBadgeBackgroundColor:async()=>{},setTitle:async()=>{}}};
+  let submissions=403;
+  globalThis.fetch=async url=>{
+    const path=new URL(url).pathname;
+    let body;
+    if(path.endsWith('versions/')) body=[];
+    else if(path.endsWith('whoami')) body={Identifier:99};
+    else if(path.includes('myenrollments')) body={Items:[{OrgUnit:{Id:12,Code:'BBA',Name:'BBA Program Information'},Access:{IsActive:true,CanAccess:true}}],PagingInfo:{HasMoreItems:false}};
+    else if(path.includes('content/myItems') || path.endsWith('calendar/events/myEvents/')) body=[];
+    else if(path.endsWith('dropbox/folders/')) body=[{Id:7,Name:'Program form',DueDate:'2099-01-01T12:00:00Z'}];
+    else if(path.endsWith('mysubmissions/')) { if(submissions!==200) return new Response('',{status:submissions}); body=[]; }
+    else if(path.endsWith('quizzes/') || path.endsWith('discussions/forums/')) body=[];
+    else throw new Error(path);
+    return new Response(JSON.stringify(body),{headers:{'content-type':'application/json'}});
+  };
+  assert.equal((await sync()).ok,true);
+  assert.deepEqual(state.syncState.warnings,[]);assert.equal(state.complete,true);
+  const item=state.assignments.find(row=>row.entityId==='7');
+  assert.equal(item.statusSource,'restricted');assert.equal(item.status,'Pending');assert.ok(!item.stale);
+  submissions=500;
+  await sync();
+  assert.match(state.syncState.warnings[0],/submission status could not be verified/);assert.equal(state.complete,false);
+});
