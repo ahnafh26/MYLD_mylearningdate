@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300" width="1200" height="300">
+  <rect width="1200" height="300" rx="24" fill="#330072"/>
+  <rect x="0" y="262" width="1200" height="14" fill="#F2A900"/>
+  <g transform="translate(70 62) scale(1.35)">
+    <rect x="4" y="4" width="120" height="120" rx="30" fill="#fff"/>
+    <rect x="22" y="29" width="84" height="77" rx="16" fill="#f8f4fc" stroke="#330072" stroke-width="7"/>
+    <path d="M24 49h80M43 21v16M85 21v16" fill="none" stroke="#330072" stroke-width="7" stroke-linecap="round"/>
+    <path d="M30 67c22 5 33-7 51-7 10 0 16 5 17 13l-13-1c-10 1-15 14-28 22l9-16c-14 4-26-1-36-6 16 2 26 0 33-4-12 3-23 3-33-1z" fill="#F2A900"/>
+    <path d="m81 65 7 1-5 3z" fill="#330072"/>
+  </g>
+  <g font-family="Segoe UI, Helvetica, Arial, sans-serif">
+    <text x="290" y="140" font-size="84" font-weight="800" fill="#fff" letter-spacing="2">MYLD</text>
+    <text x="290" y="188" font-size="34" font-weight="600" fill="#F2A900">My Learning Date</text>
+    <text x="290" y="230" font-size="22" fill="#e6dcf0">Every deadline, quiz and assessment. One side panel. Built for Golden Hawks.</text>
+  </g>
+</svg>
