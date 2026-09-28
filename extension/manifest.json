@@ -1,0 +1,63 @@
+{
+  "manifest_version": 3,
+  "name": "MYLD \u2014 My Learning Date",
+  "short_name": "MYLD",
+  "version": "3.1.0",
+  "description": "Your MyLearningSpace deadlines, in one calm place. Built for Laurier students.",
+  "minimum_chrome_version": "120",
+  "permissions": [
+    "storage",
+    "alarms",
+    "sidePanel",
+    "identity"
+  ],
+  "optional_permissions": [
+    "notifications",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://mylearningspace.wlu.ca/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://mylearningspace.wlu.ca/d2l/*"
+      ],
+      "js": [
+        "session-bridge.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "popup/popup.html"
+  },
+  "action": {
+    "default_title": "MYLD \u2014 My Learning Date",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'none'"
+  },
+  "optional_host_permissions": [
+    "https://console.pearson.com/*",
+    "https://mylabmastering.pearson.com/*",
+    "https://mylab.pearson.com/*",
+    "https://achieve.macmillanlearning.com/*",
+    "https://www.googleapis.com/*"
+  ],
+  "version_name": "3.1.0 integration preview"
+}
