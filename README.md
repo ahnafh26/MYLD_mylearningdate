@@ -2,7 +2,6 @@
 
 <p>
 <img src="https://img.shields.io/badge/for-Wilfrid_Laurier_students-330072?style=for-the-badge&labelColor=F2A900" alt="For Wilfrid Laurier students">
-<img src="https://img.shields.io/badge/Chrome-Manifest_V3-330072?style=for-the-badge&labelColor=F2A900" alt="Chrome Manifest V3">
 <img src="https://img.shields.io/badge/status-beta-330072?style=for-the-badge&labelColor=F2A900" alt="Status: beta">
 <img src="https://img.shields.io/badge/license-MIT-330072?style=for-the-badge&labelColor=F2A900" alt="MIT license">
 </p>
