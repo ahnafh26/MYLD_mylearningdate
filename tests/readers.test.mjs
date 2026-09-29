@@ -79,3 +79,17 @@ test('Top Hat pages without a recognizable list import nothing', async () => {
   await loadPage('pearson-mylab.html', 'https://app.tophat.com/e/424242');
   assert.equal(readProviderPage('tophat').state, 'needs-login');
 });
+
+test('Top Hat\'s Canadian site is read the same way', async () => {
+  const result = await read('tophat-course.html', 'https://app-ca.tophat.com/e/424242/content', 'tophat');
+  assert.equal(result.state, 'connected'); assert.equal(result.rows.length, 5);
+  assert.ok(result.rows.every(row => row.link.startsWith('https://app-ca.tophat.com/')));
+});
+
+test('blank frames inside a page are ignored instead of reporting an unsupported page', async () => {
+  await loadPage('tophat-empty.html', 'https://example.pearson.com/frame');
+  globalThis.window = { top: {} };
+  try { assert.equal(readProviderPage('pearson').state, 'ignored'); }
+  finally { delete globalThis.window; }
+  assert.equal(readProviderPage('pearson').state, 'unavailable');
+});

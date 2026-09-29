@@ -46,3 +46,15 @@ test('a Mastering page table is used only when the tab has no MyLab assignment f
   assert.deepEqual(state.external.pearson.assignments.map(item=>item.externalId),expected);
  }
 });
+test('sync explains a missing tab, and prefers the page\'s own message and address over its frames',async()=>{
+ let state={accountId:'owner'};
+ const setup=results=>{globalThis.chrome={storage:{local:{get:async()=>structuredClone(state),set:async patch=>Object.assign(state,patch)}},permissions:{contains:async()=>true},tabs:{query:async()=>results?[{id:1,url:'https://mylabmastering.pearson.com/courses/7/home?x=1'}]:[]},scripting:{executeScript:async()=>results}};};
+ setup(null);await syncProvider('tophat',courseLabel);
+ assert.equal(state.external.tophat.state,'no-open-tab');assert.match(state.external.tophat.message,/No open Top Hat tab/);
+ setup([{frameId:0,result:{state:'unavailable',message:'Open Lab Quizzes and Assignments in MyLab.'}},{frameId:4,result:{state:'unavailable',message:'This page isn’t one MYLD can read yet.'}},{frameId:5,result:{state:'ignored'}}]);
+ await syncProvider('pearson',courseLabel);
+ assert.equal(state.external.pearson.message,'Open Lab Quizzes and Assignments in MyLab. (Page: mylabmastering.pearson.com/courses/7/home)');
+ setup([{frameId:0,result:{state:'rows',courseId:'9',rows:[{externalId:'H_1',title:'HW',dueDate:null,completed:false}]}}]);
+ await syncProvider('pearson',courseLabel);
+ assert.match(state.external.pearson.message,/MyLab is open on its own/);
+});

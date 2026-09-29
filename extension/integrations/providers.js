@@ -16,21 +16,29 @@ export async function syncProvider(provider, labelCourse) {
     const tabs = await chrome.tabs.query({ url: origins });
     const snapshots = [];
     const observedAccounts = new Set();
-    let reason = { state: 'needs-login', message: `Open a signed-in ${PROVIDERS[provider].label} course tab, then sync.` };
+    let reason = { state: 'no-open-tab', message: `No open ${PROVIDERS[provider].label} tab was found. Open your course's assignment page in Chrome, then sync.` }, reasonRank = 0;
+    // The page's own message (top frame) wins over a frame inside it, and names the page it came from.
+    const note = (result, tab, rank) => {
+      if (rank < reasonRank) return;
+      let page = '';
+      try { const url = new URL(tab.url); page = ` (Page: ${url.hostname}${url.pathname.slice(0, 60)})`; } catch {}
+      reason = { ...result, message: `${result.message}${page}` }; reasonRank = rank;
+    };
     for (const tab of tabs) {
       try {
         const results = await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: provider === 'pearson' }, func: readProviderPage, args: [provider] });
         const context = results.find(row => row.result?.state === 'context')?.result;
         const frameRows = results.some(row => row.result?.state === 'rows' && row.result.courseId === context?.courseId && row.result.rows?.length);
-        for (const { result } of results) {
+        for (const { result, frameId } of results) {
           if (result?.account) observedAccounts.add(await digest(`${provider}|${result.account}`));
           if (result?.state === 'rows' && context?.courseId === result.courseId) Object.assign(result, { ...context, masteringRows: undefined }, { state: result.rows?.length ? 'connected' : 'unavailable', message: result.message });
           // A Mastering course page's own table is used only when no MyLab frame was read.
           if (result === context && result.masteringRows?.length && !frameRows) snapshots.push({ ...result, state: 'connected', rows: result.masteringRows });
           if (result?.state === 'connected' && result.account && Array.isArray(result.rows)) snapshots.push(result);
-          else if (result?.message) reason = result;
+          else if (result?.state === 'rows' && context?.courseId !== result.courseId) note({ state: 'unavailable', message: 'MyLab is open on its own, so MYLD can’t tell which Pearson account it belongs to. Open the course from Pearson (the page around MyLab), then go to Lab Quizzes and Assignments.' }, tab, 1);
+          else if (result?.message) note(result, tab, frameId === 0 ? 2 : 1);
         }
-      } catch { reason = { state: 'unavailable', message: 'This course tab could not be read. Reload it and try again.' }; }
+      } catch { note({ state: 'unavailable', message: 'This course tab could not be read. Reload it and try again.' }, tab, 2); }
     }
     if (!snapshots.length) {
       if (observedAccounts.size) accountMismatch = observedAccounts.size > 1 || Boolean(previous.accountKey && !observedAccounts.has(previous.accountKey));

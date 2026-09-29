@@ -2,7 +2,7 @@ export const PROVIDERS = {
   d2l: { label: 'MyLS', home: 'https://mylearningspace.wlu.ca/d2l/home', origins: ['https://mylearningspace.wlu.ca'] },
   pearson: { label: 'Pearson', home: 'https://console.pearson.com/courses', origins: ['https://console.pearson.com', 'https://mylabmastering.pearson.com', 'https://mylab.pearson.com'] },
   achieve: { label: 'Achieve', home: 'https://achieve.macmillanlearning.com/courses', origins: ['https://achieve.macmillanlearning.com'] },
-  tophat: { label: 'Top Hat', home: 'https://app.tophat.com/e', origins: ['https://app.tophat.com'] }
+  tophat: { label: 'Top Hat', home: 'https://app.tophat.com/e', origins: ['https://app.tophat.com', 'https://app-ca.tophat.com'] }
 };
 export const EXTERNAL_PROVIDERS = Object.keys(PROVIDERS).filter(id => id !== 'd2l');
 export const providerOf = item => Object.hasOwn(PROVIDERS, item.provider) ? item.provider : 'd2l';

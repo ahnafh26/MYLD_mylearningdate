@@ -162,10 +162,11 @@ export function readProviderPage(provider) {
     return { state: 'connected', account, courseId, courseName, rows, partial: true, message: 'Reads assignment tables on open Pearson course pages. This layout is new and not yet checked on a real account.' };
   }
 
-  if (provider === 'tophat' && location.origin === 'https://app.tophat.com') {
+  // Canadian schools use Top Hat's Canadian site, app-ca.tophat.com.
+  if (provider === 'tophat' && /^https:\/\/app(?:-ca)?\.tophat\.com$/.test(location.origin)) {
     const courseId = location.pathname.match(/^\/e\/(\d+)/)?.[1];
     const account = accountFrom(['[data-test-id*="user-menu" i]', '[data-testid*="user-menu" i]', 'button[aria-label*="account" i]', 'button[aria-label*="profile" i]', '[data-test-id*="user-name" i]', '[data-testid*="user-name" i]']);
-    if (!account) return { state: 'needs-login', message: 'Open your signed-in Top Hat course.' };
+    if (!account) return { state: 'needs-login', message: 'Couldn’t find your Top Hat account on this page. Make sure you’re signed in, then sync again.' };
     if (!courseId) return { state: 'unavailable', message: 'Open a Top Hat course, then its list of assigned content.' };
     const courseName = text(document.querySelector('[data-test-id*="course-name" i], [data-testid*="course-name" i], h1'));
     const yearHint = +(courseName.match(/\b20\d{2}\b/)?.[0] || 0) || null;
@@ -194,6 +195,8 @@ export function readProviderPage(provider) {
     return { state: 'connected', account, courseId, courseName, rows, partial: true, message: 'Reads dated homework, quizzes and readings on open Top Hat course pages. This layout is new and not yet checked on a real account.' };
   }
 
+  // Blank or helper frames inside a course page say nothing, so they can't hide the page's own message.
+  if (typeof window !== 'undefined' && window.top !== window) return { state: 'ignored' };
   // Unsupported markup fails closed instead of inventing assignments.
-  return { state: 'unavailable', message: 'This assignment view has not been verified. No coursework was imported.' };
+  return { state: 'unavailable', message: 'This page isn’t one MYLD can read yet. No coursework was imported.' };
 }

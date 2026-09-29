@@ -61,7 +61,7 @@ Sync MyLearningSpace first, then go to **Settings → Connections** and connect 
 | **Pearson MyLab** | Your course → Lab Quizzes and Assignments |
 | **Pearson Mastering** | Your course's assignment list *(new, not yet checked on a real account)* |
 | **Achieve** | My Course → Assignments (use View All to load more; collapsed and Past Assignments groups already on the page are read too) |
-| **Top Hat** | Your course's assigned content list *(new, not yet checked on a real account)* |
+| **Top Hat** | Your course's assigned content list, on app.tophat.com or the Canadian app-ca.tophat.com *(new, not yet checked on a real account)* |
 
 **Completion** comes from the platform itself: Complete, Submitted (including late), Graded, a score, or 100%. An attempt count, "40% complete" progress, or a class-wide "students completed" number never counts. Top Hat items without a due date are left out; Pearson and Achieve items without one show under **No date listed**.
 
