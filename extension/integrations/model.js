@@ -1,6 +1,6 @@
 export const PROVIDERS = {
   d2l: { label: 'MyLS', home: 'https://mylearningspace.wlu.ca/d2l/home', origins: ['https://mylearningspace.wlu.ca'] },
-  pearson: { label: 'Pearson', home: 'https://console.pearson.com/courses', origins: ['https://console.pearson.com', 'https://mylabmastering.pearson.com', 'https://mylab.pearson.com'] },
+  pearson: { label: 'Pearson', home: 'https://console.pearson.com/console/home', origins: ['https://console.pearson.com', 'https://mylabmastering.pearson.com', 'https://mylab.pearson.com'] },
   achieve: { label: 'Achieve', home: 'https://achieve.macmillanlearning.com/courses', origins: ['https://achieve.macmillanlearning.com'] }
 };
 export const EXTERNAL_PROVIDERS = Object.keys(PROVIDERS).filter(id => id !== 'd2l');

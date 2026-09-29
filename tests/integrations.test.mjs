@@ -46,7 +46,7 @@ test('provider cache is isolated by MyLS owner and explicit course mappings',()=
  assert.equal(combinedData({...state,external:{pearson:{...ext,quarantined:true}}}).assignments.length,0);
 });
 test('provider links reject executable, foreign and credential-bearing URLs',()=>{
- for(const link of ['javascript:alert(1)','https://evil.test','https://user@mylab.pearson.com/courses/1']) assert.equal(assignmentLink({provider:'pearson',link}),'https://console.pearson.com/courses');
+ for(const link of ['javascript:alert(1)','https://evil.test','https://user@mylab.pearson.com/courses/1']) assert.equal(assignmentLink({provider:'pearson',link}),'https://console.pearson.com/console/home');
  assert.equal(assignmentLink({provider:'achieve',link:'https://achieve.macmillanlearning.com/courses/1/mycourse'}),'https://achieve.macmillanlearning.com/courses/1/mycourse');
 });
 test('provider sync preserves partial cache, updates completion, and quarantines mixed accounts',async()=>{
