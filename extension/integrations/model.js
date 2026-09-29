@@ -1,8 +1,7 @@
 export const PROVIDERS = {
   d2l: { label: 'MyLS', home: 'https://mylearningspace.wlu.ca/d2l/home', origins: ['https://mylearningspace.wlu.ca'] },
   pearson: { label: 'Pearson', home: 'https://console.pearson.com/courses', origins: ['https://console.pearson.com', 'https://mylabmastering.pearson.com', 'https://mylab.pearson.com'] },
-  achieve: { label: 'Achieve', home: 'https://achieve.macmillanlearning.com/courses', origins: ['https://achieve.macmillanlearning.com'] },
-  tophat: { label: 'Top Hat', home: 'https://app.tophat.com/e', origins: ['https://app.tophat.com', 'https://app-ca.tophat.com'] }
+  achieve: { label: 'Achieve', home: 'https://achieve.macmillanlearning.com/courses', origins: ['https://achieve.macmillanlearning.com'] }
 };
 export const EXTERNAL_PROVIDERS = Object.keys(PROVIDERS).filter(id => id !== 'd2l');
 export const providerOf = item => Object.hasOwn(PROVIDERS, item.provider) ? item.provider : 'd2l';
@@ -48,7 +47,7 @@ export function normalizedCourseCode(course) {
   }
   return null;
 }
-const PLATFORM_WORDS = /\b(?:macmillan(?:\s+learning)?|achieve|pearson|my\s*labs?(?:\s+(?:and|&)\s+mastering)?|mastering|top\s*hat|tophat)\b/g;
+const PLATFORM_WORDS = /\b(?:macmillan(?:\s+learning)?|achieve|pearson|my\s*labs?(?:\s+(?:and|&)\s+mastering)?|mastering)\b/g;
 const NUMBER_LABELS = new Set(['ch', 'part', 'quiz', 'module', 'week', 'unit', 'lesson', 'section', 'test', 'lab', 'exam', 'midterm', 'case', 'set']);
 const STOP_WORDS = new Set(['the', 'a', 'an', 'of', 'for', 'and', 'to', 'in', 'on', 'with', 'your', 'my', 'online', 'assignment', 'assignments', 'homework']);
 // Words that name a different activity; containment matches never bridge them.
@@ -127,7 +126,7 @@ export function reconcileProviders(items, log = []) {
   return result;
 }
 // The platform where the work is done owns the merged item. MyLS keeps the stable id so
-// check-offs, reminders and Calendar events carry over, and fills in a missing due date.
+// check-offs and reminders carry over, and fills in a missing due date.
 function mergePair(d2l, ext) {
   const provider = providerOf(ext), extDated = Number.isFinite(Date.parse(ext.dueDate));
   // A MyLS content "completion" only means the link was opened, so it never completes

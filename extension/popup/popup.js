@@ -1,6 +1,5 @@
 import { DEFAULT_PREFS, ORIGIN, safeLink, effectiveAssignments, courseLabel } from '../background.js';
 import { PROVIDERS, EXTERNAL_PROVIDERS, providerOf, assignmentLink, combinedData } from '../integrations/model.js';
-import { calendarConfigured } from '../integrations/google-calendar.js';
 import { weeklyProgress, knownProgress, scopedItems, inView } from './dashboard.js';
 import { REMINDER_TYPES, DEFAULT_LEADS, LEADS, bucketOf, categoryOf } from '../planner.js';
 const $ = id => document.getElementById(id);
@@ -102,12 +101,6 @@ function card(item) {
   else if(item.statusSource==='restricted') link.append(node('p','verification','MyLS doesn’t share this submission status · check MyLS'));
   if(item.stale)link.append(node('p','verification',`Saved date · check ${provider.label}`));
   wrapper.append(done,link);
-  if(calendarReady() && hasDate) {
-    const saved=data.calendarEvents?.[`${data.accountId}|${item.id}`];
-    const add=node('button','calendar-item',saved?'Update in Calendar':'Add to Calendar');add.type='button';add.disabled=integrationBusy;
-    add.setAttribute('aria-label',`${add.textContent}: ${item.title}`);
-    add.addEventListener('click',()=>runIntegration({type:'CALENDAR_ADD',id:item.id}));wrapper.append(add);
-  }
   return wrapper;
 }
 function renderSettings() {
@@ -147,11 +140,10 @@ systemTheme.addEventListener('change',render);
 async function initialize(){data=await chrome.storage.local.get(null);render();const status=await chrome.runtime.sendMessage({type:'STATUS'});syncing=Boolean(status?.running);render();if(!syncing&&!data.deletedAt&&(!data.lastSync||Date.now()-Date.parse(data.lastSync)>prefs().syncMinutes*60000))await refresh();}
 initialize().catch(()=>{localError='Close and reopen MYLD to try again.';render();});setInterval(render,60000);
 
-function sourceSymbol(provider) { return {all:'◇',d2l:'▱',pearson:'Ⓟ',achieve:'▥',tophat:'Ⓣ'}[provider]; }
-function calendarReady() { return data.calendarConnection?.state === 'connected' && data.calendarConnection.ownerId === data.accountId; }
+function sourceSymbol(provider) { return {all:'◇',d2l:'▱',pearson:'Ⓟ',achieve:'▥'}[provider]; }
 function renderSources() {
   $('source-filters').replaceChildren();
-  for(const [id,label] of [['all','All'],...Object.entries(PROVIDERS).map(([id,p])=>[id,p.label])]) {
+  for(const [id,label] of [['all','All Sources'],...Object.entries(PROVIDERS).map(([id,p])=>[id,p.label])]) {
     const button=node('button',`source-filter ${id}`);button.type='button';button.setAttribute('aria-pressed',String(sourceFilter===id));
     button.dataset.focusKey=`source:${id}`;
     const icon=node('span','source-symbol',sourceSymbol(id));icon.setAttribute('aria-hidden','true');button.append(icon,node('span','',label));
@@ -167,7 +159,6 @@ async function runIntegration(message) {
   try {
     const result=await chrome.runtime.sendMessage(message);
     if(!result?.ok) throw new Error(result?.error || result?.message || 'Connection unavailable. Open its course page and try again.');
-    if(message.type==='CALENDAR_ALL' || message.type==='CALENDAR_ADD') $('calendar-feedback').textContent=`${result.count} ${result.count===1?'deadline':'deadlines'} saved to Google Calendar.`;
   } catch(error) {localError=error.message;}
   finally{integrationBusy=false;data=await chrome.storage.local.get(null);render();}
 }
@@ -202,17 +193,4 @@ function renderConnections() {
       }
     }
   }
-  const ready=calendarReady(),configured=calendarConfigured();
-  $('calendar-state').textContent=ready?'Connected to your Google Calendar. Choose individual deadlines or add all upcoming items.':data.calendarConnection?.message || (configured?'Connect your Google account to add deadlines.':'Publisher setup required before Google Calendar can connect. See GOOGLE-CALENDAR-SETUP.md.');
-  $('calendar-connect').hidden=ready;$('calendar-connect').disabled=!configured||integrationBusy;
-  $('calendar-all').hidden=!ready;$('calendar-all').disabled=integrationBusy;
-  $('calendar-disconnect').hidden=!data.calendarConnection || data.calendarConnection.state==='disconnected';
-  $('calendar-disconnect').disabled=integrationBusy;
-  $('calendar-auto').checked=Boolean(data.calendarAutoUpdate);$('calendar-auto').disabled=!ready;
 }
-$('calendar-connect').addEventListener('click',async()=>{
-  try{if(await chrome.permissions.request({origins:['https://www.googleapis.com/*']}))await runIntegration({type:'CALENDAR_CONNECT'});else{localError='Google Calendar access was not granted.';render();}}catch(error){localError=error.message;render();}
-});
-$('calendar-all').addEventListener('click',()=>runIntegration({type:'CALENDAR_ALL'}));
-$('calendar-disconnect').addEventListener('click',()=>runIntegration({type:'CALENDAR_DISCONNECT'}));
-$('calendar-auto').addEventListener('change',async e=>{try{await chrome.storage.local.set({calendarAutoUpdate:calendarReady()&&e.target.checked});}catch{localError='Could not save Calendar preference.';render();}});

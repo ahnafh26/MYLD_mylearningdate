@@ -23,18 +23,14 @@ test('real account mismatch stays quarantined when course tabs are closed',async
  globalThis.chrome={storage:{local:{get:async()=>structuredClone(state),set:async patch=>Object.assign(state,patch)}},permissions:{contains:async()=>true},tabs:{query:async()=>[]}};
  await syncProvider('pearson',courseLabel);assert.equal(combinedData(state).assignments.length,0);
 });
-test('Top Hat syncs end to end, keeping undated rows for other platforms and each row\'s completion kind',async()=>{
+test('undated platform rows are kept with each row\'s completion kind',async()=>{
  let state={accountId:'owner'};
- const rows={tophat:[{externalId:'th-1',title:'Chapter 4 Homework',dueDate:'2026-10-01T03:59:00Z',completed:true,completionKind:'Submitted',type:'Dropbox',link:'https://app.tophat.com/e/1'}],
-  achieve:[{externalId:'a4',title:'Syllabus Scavenger Hunt',dueDate:null,completed:false,type:'Dropbox',link:'https://achieve.macmillanlearning.com/courses/c/mycourse#a4'}]};
- for(const provider of ['tophat','achieve']){
-  globalThis.chrome={storage:{local:{get:async()=>structuredClone(state),set:async patch=>Object.assign(state,patch)}},permissions:{contains:async()=>true},tabs:{query:async()=>[{id:1}]},scripting:{executeScript:async()=>[{result:{state:'connected',account:'Sam',courseId:'1',courseName:'BU 111 Fall 2026',rows:rows[provider]}}]}};
-  assert.equal((await syncProvider(provider,courseLabel)).ok,true,provider);
- }
- const [homework]=state.external.tophat.assignments;
- assert.equal(homework.status,'Submitted');assert.equal(homework.completionKind,'Submitted');assert.equal(homework.statusSource,'Top Hat');
+ const rows=[{externalId:'a4',title:'Syllabus Scavenger Hunt',dueDate:null,completed:true,completionKind:'Graded',type:'Dropbox',link:'https://achieve.macmillanlearning.com/courses/c/mycourse#a4'}];
+ globalThis.chrome={storage:{local:{get:async()=>structuredClone(state),set:async patch=>Object.assign(state,patch)}},permissions:{contains:async()=>true},tabs:{query:async()=>[{id:1}]},scripting:{executeScript:async()=>[{result:{state:'connected',account:'Sam',courseId:'1',courseName:'BU 111 Fall 2026',rows}}]}};
+ assert.equal((await syncProvider('achieve',courseLabel)).ok,true);
  const [undated]=state.external.achieve.assignments;
- assert.equal(undated.dueDate,null);assert.equal(combinedData(state).assignments.length,2);
+ assert.equal(undated.dueDate,null);assert.equal(undated.completionKind,'Graded');assert.equal(undated.statusSource,'Achieve');
+ await assert.rejects(syncProvider('tophat',courseLabel),/Unknown provider/);
 });
 test('a Mastering page table is used only when the tab has no MyLab assignment frame',async()=>{
  const context={state:'context',account:'Sam',courseId:'7',courseName:'BU 111',masteringRows:[{externalId:'m-1',title:'Week 3 Problem Set',dueDate:'2026-10-02T03:59:00Z',completed:true,link:'https://mylabmastering.pearson.com/x'}]};
@@ -49,8 +45,8 @@ test('a Mastering page table is used only when the tab has no MyLab assignment f
 test('sync explains a missing tab, and prefers the page\'s own message and address over its frames',async()=>{
  let state={accountId:'owner'};
  const setup=results=>{globalThis.chrome={storage:{local:{get:async()=>structuredClone(state),set:async patch=>Object.assign(state,patch)}},permissions:{contains:async()=>true},tabs:{query:async()=>results?[{id:1,url:'https://mylabmastering.pearson.com/courses/7/home?x=1'}]:[]},scripting:{executeScript:async()=>results}};};
- setup(null);await syncProvider('tophat',courseLabel);
- assert.equal(state.external.tophat.state,'no-open-tab');assert.match(state.external.tophat.message,/No open Top Hat tab/);
+ setup(null);await syncProvider('achieve',courseLabel);
+ assert.equal(state.external.achieve.state,'no-open-tab');assert.match(state.external.achieve.message,/No open Achieve tab/);
  setup([{frameId:0,result:{state:'unavailable',message:'Open Lab Quizzes and Assignments in MyLab.'}},{frameId:4,result:{state:'unavailable',message:'This page isn’t one MYLD can read yet.'}},{frameId:5,result:{state:'ignored'}}]);
  await syncProvider('pearson',courseLabel);
  assert.equal(state.external.pearson.message,'Open Lab Quizzes and Assignments in MyLab. (Page: mylabmastering.pearson.com/courses/7/home)');

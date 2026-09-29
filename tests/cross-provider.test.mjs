@@ -56,15 +56,15 @@ test('old manual completion aliases survive merging and can be undone',async()=>
 // Builds one MyLS item and one platform item in the same class for merge tests.
 const pair=(provider,{d2l={},ext={}}={})=>({
  accountId:'student',courses:[{id:'mls-bu',name:'BU111 - Understanding the Business Environment',code:'2243.202609'}],
- assignments:[{id:'d',courseId:'mls-bu',courseCode:'BU 111',title:`${{achieve:'Achieve',pearson:'Pearson MyLab',tophat:'Top Hat'}[provider]} – Ch. 4 HW`,dueDate:'2026-10-01T03:59:00Z',type:'Event',source:'content',status:'Pending',link:'https://mylearningspace.wlu.ca/d2l/le/content/1/viewContent/2/View',...d2l}],
- external:{[provider]:{ownerId:'student',state:'connected',courses:[{id:`${provider}-c`,name:'BU 111 Fall 2026',code:'BU 111'}],assignments:[{id:'x',provider,courseId:`${provider}-c`,courseCode:'BU 111',title:'Chapter 4 Homework',dueDate:'2026-10-01T00:59:00Z',dateKind:'Due',type:'Dropbox',status:'Submitted',completionKind:'Completed',statusSource:'x',link:`${{achieve:'https://achieve.macmillanlearning.com',pearson:'https://mylab.pearson.com',tophat:'https://app.tophat.com'}[provider]}/item`,...ext}]}}
+ assignments:[{id:'d',courseId:'mls-bu',courseCode:'BU 111',title:`${{achieve:'Achieve',pearson:'Pearson MyLab'}[provider]} – Ch. 4 HW`,dueDate:'2026-10-01T03:59:00Z',type:'Event',source:'content',status:'Pending',link:'https://mylearningspace.wlu.ca/d2l/le/content/1/viewContent/2/View',...d2l}],
+ external:{[provider]:{ownerId:'student',state:'connected',courses:[{id:`${provider}-c`,name:'BU 111 Fall 2026',code:'BU 111'}],assignments:[{id:'x',provider,courseId:`${provider}-c`,courseCode:'BU 111',title:'Chapter 4 Homework',dueDate:'2026-10-01T00:59:00Z',dateKind:'Due',type:'Dropbox',status:'Submitted',completionKind:'Completed',statusSource:'x',link:`${{achieve:'https://achieve.macmillanlearning.com',pearson:'https://mylab.pearson.com'}[provider]}/item`,...ext}]}}
 });
-test('Achieve, Pearson and Top Hat "Chapter 4 Homework" merge with MyLS "Ch. 4 HW" three hours apart, owned by the platform',()=>{
- for(const provider of ['achieve','pearson','tophat']){
+test('Achieve and Pearson "Chapter 4 Homework" merge with MyLS "Ch. 4 HW" three hours apart, owned by the platform',()=>{
+ for(const provider of ['achieve','pearson']){
   const rows=combinedData(pair(provider)).assignments;
   assert.equal(rows.length,1,provider);
   const [item]=rows;
-  assert.equal(item.provider,provider);assert.equal(item.status,'Submitted');assert.equal(item.statusSource,{achieve:'Achieve',pearson:'Pearson',tophat:'Top Hat'}[provider]);
+  assert.equal(item.provider,provider);assert.equal(item.status,'Submitted');assert.equal(item.statusSource,{achieve:'Achieve',pearson:'Pearson'}[provider]);
   assert.equal(item.title,'Chapter 4 Homework');assert.match(item.link,/\/item$/);assert.equal(item.id,'d');
   assert.deepEqual(item.memberIds.sort(),['d','x']);assert.deepEqual(item.alsoOn,['d2l']);
  }
@@ -116,17 +116,17 @@ test('previously verified platform completion keeps a merge complete when its ta
  const [item]=combinedData(state).assignments;
  assert.equal(item.status,'Submitted');assert.equal(item.verificationCached,true);assert.equal(item.statusSource,'Achieve');
 });
-test('Pearson, Achieve and Top Hat course names map to the MyLS course',()=>{
+test('Pearson and Achieve course names map to the MyLS course',()=>{
  const state={accountId:'student',courses:[{id:'m',name:'EC120A - Microeconomics (Fall 2026)',code:'2243.202609'}],assignments:[],external:{}};
- for(const [provider,name] of [['pearson','EC120 Principles of Microeconomics - Smith - Fall 2026'],['achieve','Microeconomics: EC 120 Fall 2026'],['tophat','EC-120 Microeconomics F26']]) {
+ for(const [provider,name] of [['pearson','EC120 Principles of Microeconomics - Smith - Fall 2026'],['achieve','Microeconomics: EC 120 Fall 2026']]) {
   state.external[provider]={ownerId:'student',state:'connected',courses:[{id:`${provider}-1`,name,code:name}],assignments:[{id:`${provider}-a`,provider,courseId:`${provider}-1`,title:'Quiz 1',dueDate:'2026-10-01T00:00:00Z',status:'Pending'}]};
  }
  const data=combinedData(state);
- assert.equal(data.courses.length,1);assert.deepEqual(data.courses[0].memberIds.sort(),['achieve-1','m','pearson-1','tophat-1']);
+ assert.equal(data.courses.length,1);assert.deepEqual(data.courses[0].memberIds.sort(),['achieve-1','m','pearson-1']);
  assert.ok(data.assignments.every(i=>i.courseId==='m'));
 });
 test('unmatched platform items stay in their own source view',()=>{
- const state=pair('tophat',{ext:{title:'Reading: Chapter 9'}});
+ const state=pair('pearson',{ext:{title:'Reading: Chapter 9'}});
  const rows=effectiveAssignments(state);
- assert.equal(scopedItems(rows,'all','tophat').length,1);assert.equal(scopedItems(rows,'all','d2l').length,1);
+ assert.equal(scopedItems(rows,'all','pearson').length,1);assert.equal(scopedItems(rows,'all','d2l').length,1);
 });

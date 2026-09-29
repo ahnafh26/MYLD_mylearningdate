@@ -1,3 +1,8 @@
+# Removed Top Hat and Google Calendar — September 29, 2026
+
+- **Top Hat:** removed. It never synced on a real account, so its connection, source filter, page reader, site permissions and tests are gone. Anything it saved is cleared the next time MYLD is installed or reloaded.
+- **Google Calendar export:** removed. It was never set up with a Google sign-in client. The Calendar section in Settings, the "Add to Calendar" buttons, the identity and googleapis.com permissions, the setup script and doc, and their tests are gone, along with any saved Calendar settings. MYLD still reads MyLearningSpace's own course calendar for due dates.
+
 # Platform integrations update — September 28, 2026
 
 - **Top Hat (new):** a Top Hat connection in Settings → Connections, a Top Hat source filter, and optional access to app.tophat.com. It reads dated homework, quizzes and readings on open course pages and detects Submitted, Completed, Graded and 100% complete. Pages it can't read import nothing. Not yet checked on a real account.

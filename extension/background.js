@@ -1,6 +1,5 @@
 import { combinedData, keepVerified, assignmentLink, providerOf, EXTERNAL_PROVIDERS } from './integrations/model.js';
 import { syncProvider } from './integrations/providers.js';
-import { connectCalendar, disconnectCalendar, addCalendarItems } from './integrations/google-calendar.js';
 import { DEFAULT_LEADS, categoryOf, reminderTime, termWindow, currentEnrollment, scheduledItem, reconcileItems } from './planner.js';
 export const ORIGIN = 'https://mylearningspace.wlu.ca';
 export const DEFAULT_PREFS = { showSubmitted: false, badge: true, syncMinutes: 30, reminders: false, theme: 'light', reminderLeads: DEFAULT_LEADS, mutedCourses: [], movedReminders: true };
@@ -334,7 +333,7 @@ async function performD2LSync() {
     const accountId = String(user.Identifier);
     if (old.accountId !== accountId) {
       old.assignments = []; old.courses = [];
-      await chrome.storage.local.set({ accountId, assignments: [], courses: [], completedIds: {}, reminderReceipts: {}, notificationItems: {}, external: {}, courseMappings: {}, calendarConnection: { state: 'disconnected' }, calendarEvents: {}, calendarAutoUpdate: false, lastSync: null, complete: false });
+      await chrome.storage.local.set({ accountId, assignments: [], courses: [], completedIds: {}, reminderReceipts: {}, notificationItems: {}, external: {}, courseMappings: {}, lastSync: null, complete: false });
     }
     const enrolled = await listPages(`/d2l/api/lp/${version.lp}/enrollments/myenrollments/?orgUnitTypeId=3`);
   let courses = enrolled.filter(row => row.OrgUnit?.Id != null && currentEnrollment(row))
@@ -488,6 +487,13 @@ async function shouldNotify(item, data) {
   } catch (error) { return !['auth', 'rate'].includes(error.code); }
 }
 
+// Google Calendar export and the Top Hat connection were removed; clear what they saved.
+async function removeRetiredData() {
+  const { external } = await chrome.storage.local.get('external');
+  await chrome.storage.local.remove(['calendarConnection', 'calendarEvents', 'calendarAutoUpdate']);
+  if (external?.tophat) { delete external.tophat; await chrome.storage.local.set({ external }); }
+}
+
 async function readShared(courses, version) {
   const items = [], completions = [], warnings = [], calendars = new Map(), failedContent = new Set();
   const window = termWindow();
@@ -530,7 +536,7 @@ if (globalThis.chrome?.runtime?.id && typeof document === 'undefined') {
     if (item) await chrome.tabs.create({ url: assignmentLink(item) });
     await chrome.notifications.clear(notificationId);
   });
-  chrome.runtime.onInstalled.addListener(() => { schedule().then(sync).catch(console.error); });
+  chrome.runtime.onInstalled.addListener(() => { removeRetiredData().then(schedule).then(sync).catch(console.error); });
   chrome.runtime.onStartup.addListener(() => { schedule().then(async () => { if (!(await chrome.storage.local.get('deletedAt')).deletedAt) await sync(); }).catch(console.error); });
   chrome.alarms.onAlarm.addListener(alarm => {
     if (!['myld-sync', 'myld-badge'].includes(alarm.name)) return;
@@ -540,14 +546,12 @@ if (globalThis.chrome?.runtime?.id && typeof document === 'undefined') {
     if (area === 'local' && changes.preferences) schedule().then(updateBadge).catch(console.error);
     if (area === 'local' && (changes.external || changes.courseMappings)) updateBadge().catch(console.error);
   });
-  chrome.identity?.onSignInChanged?.addListener(() => disconnectCalendar().catch(console.error));
   chrome.runtime.onMessage.addListener((message, sender, respond) => {
     if (sender.id !== chrome.runtime.id || sender.url !== chrome.runtime.getURL('popup/popup.html')) return;
     if (message?.type === 'SYNC') { sync().then(async result => { await schedule(); await sendReminders(); return result; }).then(respond).catch(error => respond({ ok: false, error: error.message })); return true; }
     if (message?.type === 'CLEAR_DATA') {
       if (inFlight || notificationsRunning || integrationPending) { respond({ ok: false }); return; }
       completionWrite = completionWrite.catch(() => {}).then(async () => {
-        await chrome.identity?.clearAllCachedAuthTokens();
         await chrome.storage.local.clear();
         await chrome.storage.local.set({ deletedAt: new Date().toISOString() });
         if (await chrome.permissions.contains({ permissions: ['notifications'] })) {
@@ -558,7 +562,7 @@ if (globalThis.chrome?.runtime?.id && typeof document === 'undefined') {
       });
       completionWrite.then(respond, () => respond({ ok: false })); return true;
     }
-    if (['PROVIDER_SYNC', 'PROVIDER_DISCONNECT', 'CALENDAR_CONNECT', 'CALENDAR_DISCONNECT', 'CALENDAR_ADD', 'CALENDAR_ALL'].includes(message?.type)) {
+    if (['PROVIDER_SYNC', 'PROVIDER_DISCONNECT'].includes(message?.type)) {
       integrationAction(message).then(respond, error => respond({ ok: false, error: error.message })); return true;
     }
     if (message?.type === 'STATUS') { respond({ running: Boolean(inFlight) }); }
@@ -593,14 +597,6 @@ async function performSync() {
       try { await syncProvider(provider, courseLabel); } catch (error) { console.warn('Provider sync unavailable:', provider); }
     }
   }
-  const fresh = await chrome.storage.local.get(null);
-  if (fresh.calendarAutoUpdate && fresh.calendarConnection?.state === 'connected') {
-    const changed = effectiveAssignments(fresh).filter(item => {
-      const saved = fresh.calendarEvents?.[`${fresh.accountId}|${item.id}`];
-      return saved && (saved.dueDate !== item.dueDate || saved.title !== item.title) && !item.stale;
-    });
-    if (changed.length) { try { await addCalendarItems(changed, fresh.accountId, true); } catch { /* Connection details are recorded separately. */ } }
-  }
   await updateBadge();
   return result;
 }
@@ -613,12 +609,7 @@ function integrationAction(message) {
     if (message.type === 'PROVIDER_DISCONNECT') {
       const { external = {} } = await chrome.storage.local.get('external'); delete external[message.provider]; await chrome.storage.local.set({ external }); return { ok: true };
     }
-    if (message.type === 'CALENDAR_CONNECT') return connectCalendar();
-    if (message.type === 'CALENDAR_DISCONNECT') return disconnectCalendar();
-    const data = await chrome.storage.local.get(null);
-    const items = effectiveAssignments(data).filter(item => message.type === 'CALENDAR_ADD' ? item.id === message.id : item.status === 'Pending' && Date.parse(item.dueDate) >= Date.now());
-    if (!items.length) return { ok: false, error: 'No matching deadlines to add.' };
-    return addCalendarItems(items, data.accountId);
+    return { ok: false, error: 'Unknown action.' };
   };
   const result = integrationQueue.catch(() => {}).then(run).finally(() => { integrationPending--; }); integrationQueue = result; return result;
 }

@@ -24,7 +24,7 @@ test('Achieve reads complete, submitted-late, scored, in-progress, undated and c
 });
 
 test('Achieve without a signed-in account or outside My Course fails closed', async () => {
-  await loadPage('tophat-empty.html', 'https://achieve.macmillanlearning.com/courses/c123/mycourse');
+  await loadPage('pearson-mylab.html', 'https://achieve.macmillanlearning.com/courses/c123/mycourse');
   assert.equal(readProviderPage('achieve').state, 'needs-login');
   await loadPage('achieve-mycourse.html', 'https://achieve.macmillanlearning.com/courses/c123/gradebook');
   assert.equal(readProviderPage('achieve').state, 'unavailable');
@@ -61,33 +61,8 @@ test('Pearson console reads assignment tables, keeps links on Pearson, and fails
   assert.equal(cards.state, 'unavailable'); assert.equal(cards.rows, undefined);
 });
 
-test('Top Hat reads dated items with submitted, graded and percent completion, and skips undated ones', async () => {
-  const result = await read('tophat-course.html', 'https://app.tophat.com/e/424242/content', 'tophat');
-  assert.equal(result.state, 'connected'); assert.equal(result.account, 'Sam Student'); assert.equal(result.courseId, '424242');
-  const rows = byId(result.rows);
-  assert.deepEqual(Object.keys(rows).sort(), ['th-1', 'th-2', 'th-3', 'th-5', 'th-6'], 'undated attendance is left out');
-  assert.equal(rows['th-1'].completed, true); assert.equal(rows['th-1'].dueDate, local(2026, 9, 30));
-  assert.equal(rows['th-2'].completed, true); assert.equal(rows['th-2'].type, 'Quiz'); assert.equal(rows['th-2'].dueDate, local(2026, 10, 2, 9, 0));
-  assert.equal(rows['th-3'].completed, false, '50% complete is progress, not completion');
-  assert.equal(rows['th-5'].completed, false, '"Graded" in the title is not a status');
-  assert.equal(rows['th-6'].completed, true, '100% complete');
-});
-
-test('Top Hat pages without a recognizable list import nothing', async () => {
-  const result = await read('tophat-empty.html', 'https://app.tophat.com/e/424242', 'tophat');
-  assert.equal(result.state, 'unavailable'); assert.equal(result.rows, undefined);
-  await loadPage('pearson-mylab.html', 'https://app.tophat.com/e/424242');
-  assert.equal(readProviderPage('tophat').state, 'needs-login');
-});
-
-test('Top Hat\'s Canadian site is read the same way', async () => {
-  const result = await read('tophat-course.html', 'https://app-ca.tophat.com/e/424242/content', 'tophat');
-  assert.equal(result.state, 'connected'); assert.equal(result.rows.length, 5);
-  assert.ok(result.rows.every(row => row.link.startsWith('https://app-ca.tophat.com/')));
-});
-
 test('blank frames inside a page are ignored instead of reporting an unsupported page', async () => {
-  await loadPage('tophat-empty.html', 'https://example.pearson.com/frame');
+  await loadPage('pearson-console-cards.html', 'https://example.pearson.com/frame');
   globalThis.window = { top: {} };
   try { assert.equal(readProviderPage('pearson').state, 'ignored'); }
   finally { delete globalThis.window; }

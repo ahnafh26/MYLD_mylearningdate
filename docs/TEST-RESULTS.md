@@ -1,26 +1,27 @@
-# Validation — September 28, 2026 (platform integrations)
+# Validation — September 29, 2026 (platform integrations)
 
-Automated command: `node --test tests/*.test.mjs`. Result: **65 passed, 0 failed**, run in the America/Toronto, UTC and Asia/Kolkata time zones.
+Automated command: `node --test tests/*.test.mjs`. Result: **60 passed, 0 failed**.
+
+Top Hat and the Google Calendar export were removed on September 29. Top Hat never synced on a real account, and Calendar was never set up. Their code, permissions, fixtures and tests are gone; the notes below cover what remains. The September 28 run (65 passed) was in the America/Toronto, UTC and Asia/Kolkata time zones.
 
 The page readers are now tested against saved HTML fixtures in `tests/fixtures/`, using a small built-in DOM (`tests/helpers/dom.mjs`) so no packages need installing.
 
 - **Achieve fixture:** shaped like the view the reader was checked against on a real account. It covers Complete, Submitted late, Score, In progress, "40% complete", a class-wide "students completed" count, an undated row, a hidden Past Assignments group and a January row in a Fall course.
 - **Pearson MyLab fixture:** shaped like the real "Assignments in your course" table. It covers See score, a numeric score, attempts only, Submitted and an undated row.
-- **Pearson Mastering, Pearson console and Top Hat fixtures:** these are **assumed layouts**, not copies of real pages. The tests prove the readers behave correctly on that markup (completion rules, due-date parsing, safe links, failing closed), not that they will find rows on the real sites.
-- **Cross-platform matching:** Achieve, Pearson and Top Hat "Chapter 4 Homework" (complete) against MyLS "… – Ch. 4 HW" (pending, 3 hours apart) merge into one item owned by the platform and marked Submitted by it. Ch 4 vs Ch 5, the same title in two classes, two MyLS candidates, and one MyLS item matching two platforms never merge. An undated MyLS item takes the platform's date. 23:59 Toronto against 23:59 read in UTC still merges. A MyLS content visit never completes platform work. Previously verified completion survives a closed tab. Pearson, Achieve and Top Hat course names map to the MyLS course.
+- **Pearson Mastering and Pearson console fixtures:** these are **assumed layouts**, not copies of real pages. The tests prove the readers behave correctly on that markup (completion rules, due-date parsing, safe links, failing closed), not that they will find rows on the real sites.
+- **Cross-platform matching:** Achieve and Pearson "Chapter 4 Homework" (complete) against MyLS "… – Ch. 4 HW" (pending, 3 hours apart) merge into one item owned by the platform and marked Submitted by it. Ch 4 vs Ch 5, the same title in two classes, two MyLS candidates, and one MyLS item matching two platforms never merge. An undated MyLS item takes the platform's date. 23:59 Toronto against 23:59 read in UTC still merges. A MyLS content visit never completes platform work. Previously verified completion survives a closed tab. Pearson and Achieve course names map to the MyLS course.
 - **MyLS quizzes and discussions:** a graded or scored quiz attempt, or the student's own discussion post, marks the item complete. A 403 on attempts stops further attempt requests for that course without a warning.
-- **Provider sync:** Top Hat syncs end to end. Undated rows are kept for Pearson and Achieve. A Mastering page table is used only when the tab has no MyLab assignment frame.
+- **Provider sync:** undated rows are kept for Pearson and Achieve. A Mastering page table is used only when the tab has no MyLab assignment frame.
 
-The side panel was rendered in Chromium with synthetic data at 320 and 400 CSS pixels. The five source filters fit, Top Hat appears in Settings → Connections, and merged cards read "Achieve · also on MyLS".
+The side panel was rendered in Chromium with synthetic data at 320 and 400 CSS pixels. The source filters fit, and merged cards read "Achieve · also on MyLS".
 
 ## Not yet checked on a real account
 
-1. **Top Hat:** connect and sync a real course. The reader looks for the account menu, course id (`/e/<id>`) and dated items by label text, and every one of those is an assumption.
-2. **Pearson Mastering and console:** confirm whether their assignment views are tables with Assignment/Title and Due headers. If they aren't, the reader imports nothing and says so.
-3. **Achieve:** re-sync a real course to confirm that hidden Past Assignments rows really stay in the page, and check the exact wording of late, scored and submitted statuses.
-4. **Pearson MyLab:** confirm the wording of submitted and completed rows beyond "See score".
-5. **MyLS quizzes and discussions:** check whether MyLS lets students read their own quiz attempts and whether posts show `PostingUserId`. If attempts return 403, quizzes rely on content completion as before.
-6. **Matching:** look at Settings → Sync details after a real sync, and confirm real MyLS link titles (for example "Achieve – Ch. 4 HW") merge while different chapters don't.
+1. **Pearson Mastering and console:** confirm whether their assignment views are tables with Assignment/Title and Due headers. If they aren't, the reader imports nothing and says so.
+2. **Achieve:** re-sync a real course to confirm that hidden Past Assignments rows really stay in the page, and check the exact wording of late, scored and submitted statuses.
+3. **Pearson MyLab:** confirm the wording of submitted and completed rows beyond "See score".
+4. **MyLS quizzes and discussions:** check whether MyLS lets students read their own quiz attempts and whether posts show `PostingUserId`. If attempts return 403, quizzes rely on content completion as before.
+5. **Matching:** look at Settings → Sync details after a real sync, and confirm real MyLS link titles (for example "Achieve – Ch. 4 HW") merge while different chapters don't.
 
 ---
 

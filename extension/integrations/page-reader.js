@@ -162,39 +162,6 @@ export function readProviderPage(provider) {
     return { state: 'connected', account, courseId, courseName, rows, partial: true, message: 'Reads assignment tables on open Pearson course pages. This layout is new and not yet checked on a real account.' };
   }
 
-  // Canadian schools use Top Hat's Canadian site, app-ca.tophat.com.
-  if (provider === 'tophat' && /^https:\/\/app(?:-ca)?\.tophat\.com$/.test(location.origin)) {
-    const courseId = location.pathname.match(/^\/e\/(\d+)/)?.[1];
-    const account = accountFrom(['[data-test-id*="user-menu" i]', '[data-testid*="user-menu" i]', 'button[aria-label*="account" i]', 'button[aria-label*="profile" i]', '[data-test-id*="user-name" i]', '[data-testid*="user-name" i]']);
-    if (!account) return { state: 'needs-login', message: 'Couldn’t find your Top Hat account on this page. Make sure you’re signed in, then sync again.' };
-    if (!courseId) return { state: 'unavailable', message: 'Open a Top Hat course, then its list of assigned content.' };
-    const courseName = text(document.querySelector('[data-test-id*="course-name" i], [data-testid*="course-name" i], h1'));
-    const yearHint = +(courseName.match(/\b20\d{2}\b/)?.[0] || 0) || null;
-    const fallback = `${location.origin}/e/${courseId}`;
-    let rows = [...document.querySelectorAll('table')].map(el => tableRows(el, fallback, yearHint)).find(found => found?.length) || [];
-    if (!rows.length) {
-      // List layouts: the smallest element that holds one item's title and its due date.
-      const candidates = [...document.querySelectorAll('main [data-test-id*="item" i], main [data-testid*="item" i], main [role="row"], main li, [role="main"] li')].filter(el => /(?:\b[Dd]ue|\bDUE|(?<=[a-z])Due)\b/.test(text(el)));
-      const leaves = candidates.filter(el => !candidates.some(other => other !== el && el.contains(other)));
-      const seen = new Set();
-      rows = leaves.map(el => {
-        const anchor = el.querySelector('a[href]');
-        const title = text(el.querySelector('[data-test-id*="title" i], [data-testid*="title" i], h2, h3, h4') || anchor);
-        const dueDate = dueFrom(el, text(el), yearHint);
-        const statusText = text(el.querySelector('[data-test-id*="status" i], [data-testid*="status" i], [class*="status" i]')) || text(el).replace(title, ' ');
-        const kind = completion(statusText);
-        const id = el.getAttribute('data-item-id') || el.getAttribute('data-id') || el.id || anchor?.getAttribute('href')?.match(/\/(\d{3,})(?:[/?#]|$)/)?.[1] || (title ? `t:${title.toLowerCase().slice(0, 80)}` : null);
-        if (!title || !id || seen.has(id)) return null;
-        seen.add(id);
-        return { externalId: id, title, dueDate, completed: Boolean(kind), completionKind: kind || undefined, type: /\b(?:quiz|test|exam)\b/i.test(`${title} ${text(el)}`) ? 'Quiz' : 'Dropbox', link: sameOriginLink(anchor, fallback) };
-      }).filter(Boolean);
-    }
-    // Top Hat items without a due date (open readings, attendance) are left out.
-    rows = rows.filter(row => row.dueDate);
-    if (!rows.length) return { state: 'unavailable', message: 'No dated Top Hat items were found on this page. Open the course’s assigned content list. This view is new and not yet checked on a real account; nothing was imported.' };
-    return { state: 'connected', account, courseId, courseName, rows, partial: true, message: 'Reads dated homework, quizzes and readings on open Top Hat course pages. This layout is new and not yet checked on a real account.' };
-  }
-
   // Blank or helper frames inside a course page say nothing, so they can't hide the page's own message.
   if (typeof window !== 'undefined' && window.top !== window) return { state: 'ignored' };
   // Unsupported markup fails closed instead of inventing assignments.

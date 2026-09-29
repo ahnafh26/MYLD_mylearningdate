@@ -56,7 +56,7 @@ export async function syncProvider(provider, labelCourse) {
       const assignments = new Map(oldItems.map(item => [item.id, { ...item, stale: true }]));
       for (const snapshot of snapshots) {
         const courseId = `${provider}:${accountKey.slice(0, 16)}:${snapshot.courseId}`;
-        const course = { id: courseId, externalId: snapshot.courseId, provider, name: snapshot.courseName, code: labelCourse(snapshot.courseName), color: { achieve: '#83b963', pearson: '#e58baa', tophat: '#f2a900' }[provider] };
+        const course = { id: courseId, externalId: snapshot.courseId, provider, name: snapshot.courseName, code: labelCourse(snapshot.courseName), color: provider === 'achieve' ? '#83b963' : '#e58baa' };
         courses.set(courseId, course);
         for (const row of snapshot.rows) {
           if (!row.externalId || !row.title) continue;

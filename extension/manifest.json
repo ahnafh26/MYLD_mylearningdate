@@ -8,8 +8,7 @@
   "permissions": [
     "storage",
     "alarms",
-    "sidePanel",
-    "identity"
+    "sidePanel"
   ],
   "optional_permissions": [
     "notifications",
@@ -56,10 +55,7 @@
     "https://console.pearson.com/*",
     "https://mylabmastering.pearson.com/*",
     "https://mylab.pearson.com/*",
-    "https://achieve.macmillanlearning.com/*",
-    "https://app.tophat.com/*",
-    "https://app-ca.tophat.com/*",
-    "https://www.googleapis.com/*"
+    "https://achieve.macmillanlearning.com/*"
   ],
   "version_name": "3.1.0 integration preview"
 }
