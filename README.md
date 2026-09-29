@@ -72,7 +72,7 @@ Only loaded work is picked up, so the platform is still the final word on deadli
 
 ## 🔒 Privacy
 
-Everything stays in Chrome on your own computer. There's **no MYLD server, no analytics, no password collection and no cookie export**. Requests to MyLearningSpace go through your own signed-in tab and are read-only.
+Everything stays in Chrome on your own computer. There's **no MYLD server, no analytics, no password collection and no cookie export**. Requests to MyLearningSpace go through your own signed-in tab and are read-only. The full [privacy policy](PRIVACY.md) has the details.
 
 <details>
 <summary><b>What each permission is for</b></summary>
