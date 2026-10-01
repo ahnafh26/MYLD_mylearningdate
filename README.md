@@ -1,6 +1,7 @@
 <img src="docs/media/banner.svg" width="100%" alt="MYLD — My Learning Date. Every deadline, quiz and assessment in one side panel.">
 
 <p>
+<a href="https://chromewebstore.google.com/detail/mogmnbimhbandijdlpclebgigapchbbh"><img src="https://img.shields.io/badge/Chrome_Web_Store-Add_to_Chrome-330072?style=for-the-badge&logo=googlechrome&logoColor=white&labelColor=F2A900" alt="Available on the Chrome Web Store"></a>
 <img src="https://img.shields.io/badge/for-Wilfrid_Laurier_students-330072?style=for-the-badge&labelColor=F2A900" alt="For Wilfrid Laurier students">
 <img src="https://img.shields.io/badge/status-beta-330072?style=for-the-badge&labelColor=F2A900" alt="Status: beta">
 <img src="https://img.shields.io/badge/license-MIT-330072?style=for-the-badge&labelColor=F2A900" alt="MIT license">
@@ -36,17 +37,31 @@ Then I tried Eric Zou's [WATnow](https://github.com/EricJujianZou/watnow). It do
 
 ## 🚀 Install
 
-> MYLD isn't on the Chrome Web Store yet, so for now you load it yourself.
+**[Get MYLD on the Chrome Web Store →](https://chromewebstore.google.com/detail/mogmnbimhbandijdlpclebgigapchbbh)**
 
-1. Click **Code → Download ZIP** on this page and unzip it into your **Documents** folder, or clone the repo there.
-2. Go to `chrome://extensions` and turn on **Developer mode** (top right).
-3. Click **Load unpacked** and choose the **`extension`** folder (the one with `manifest.json`).
-4. Pin MYLD, log in to MyLearningSpace, open the side panel and hit **Sync**.
+1. Open the [Chrome Web Store page](https://chromewebstore.google.com/detail/mogmnbimhbandijdlpclebgigapchbbh) and click **Add to Chrome**.
+2. Pin MYLD from the puzzle-piece menu in the toolbar.
+3. Log in to MyLearningSpace, open the MYLD side panel and hit **Sync**.
+
+Updates install automatically.
 
 <details>
-<summary><b>Updating to a newer version</b></summary>
+<summary><b>Used the beta? (loaded unpacked)</b></summary>
 
-Replace the files **in the same folder**, then click **Reload** on the MYLD card in `chrome://extensions`. If you load it from a different folder, Chrome treats it as a separate install with its own saved data, so your check-offs and connections won't carry over.
+The Web Store version is a separate install, so it starts with fresh data. Install it, sync once, re-connect Pearson or Achieve in **Settings → Connections**, then remove the old unpacked MYLD card in `chrome://extensions` so you don't get duplicate reminders.
+
+</details>
+
+<details>
+<summary><b>Load from source (for development)</b></summary>
+
+1. Click **Code → Download ZIP** on this page and unzip it, or clone the repo.
+2. Go to `chrome://extensions` and turn on **Developer mode** (top right).
+3. Click **Load unpacked** and choose the **`extension`** folder, the one with `manifest.json` inside it.
+
+> **"Manifest file is missing"?** You picked a folder that's too high up. Windows' *Extract All* creates a doubled folder, so the path is usually `MYLD_mylearningdate-main\MYLD_mylearningdate-main\extension`. Keep opening folders until you can see `manifest.json`, then select that folder.
+
+To update, replace the files **in the same folder** and click **Reload** on the MYLD card. Loading from a different folder creates a separate install with its own saved data.
 
 </details>
 
